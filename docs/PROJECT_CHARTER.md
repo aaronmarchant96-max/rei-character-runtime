@@ -25,9 +25,9 @@ through Speech Dispatcher or Piper. The local verification suite passed 24
 tests on 2026-08-24. A minimal xOBSE adapter displayed deterministic external
 text inside original Oblivion, selected one crosshair actor with a single key,
 and atomically exported its validated Form ID to the external runtime. One
-selected NPC ID was then preserved through a local dialogue turn and Piper
-playback receipt. In-game text entry, subtitle presentation, and spatial voice
-attachment remain unverified.
+selected NPC ID was then preserved through a local dialogue turn and audible
+Piper desktop playback confirmed by the project owner. In-game text entry,
+subtitle presentation, and spatial voice attachment remain unverified.
 
 ## Strategic role
 

@@ -17,7 +17,7 @@ the activity.
 | 2026-08-24 | Prove external text inside Oblivion | 19 tests; EXP-008; xOBSE and bridge logs; human visual confirmation | Atomic Node-to-xOBSE file contract and delayed in-game message display | Dialogue providers can target a measured game-side text boundary | verified proof path; NPC interaction pending |
 | 2026-08-24 | Add one-key Oblivion character targeting | 19 tests; EXP-009; bridge log; human confirmation of visible ID | Edge-triggered actor-only crosshair selection with a Form-ID receipt | A future dialogue request can be bound to a player-selected character | verified with `U`; external round trip pending |
 | 2026-08-24 | Export selected Oblivion actor identity | 22 tests; EXP-010; 94-byte live envelope and hash receipt | Atomic game-to-runtime target contract with strict external validation | Dialogue orchestration can receive the exact player-selected reference | verified for one creature; name/location pending |
-| 2026-08-24 | Bind selected NPC to local dialogue and voice | 24 tests; EXP-011; Ollama and Piper receipts | Exact game Form ID persists through routing, grounding, and playback | One selected actor can drive a safe external spoken turn | measured playback receipt; spatial attachment pending |
+| 2026-08-24 | Bind selected NPC to local dialogue and voice | 24 tests; EXP-011; Ollama/Piper receipts; human audible confirmation | Exact game Form ID persists through routing, grounding, and playback | One selected actor can drive a safe external spoken turn | audible desktop playback verified; spatial attachment pending |
 
 ## Decision ledger
 

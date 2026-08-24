@@ -306,14 +306,22 @@ voice attachment, or a complete conversation round trip.
 - Voice status: `played`; latency: 5,368.534380000001 ms
 - Test result immediately before the live turn: 24 passed, 0 failed
 - Mode: target, dialogue, routing, grounding, and voice values copied literally
-  from the live measured receipts; audible human confirmation pending
+  from the live measured receipts
 
 The grounding layer rejected two model attempts and supplied its known safe
 uncertainty fallback before voice playback. This is expected while the target
 contract contains only a Form ID and actor kind: no canonical NPC name,
 biography, location, or dialogue facts were invented.
 
+The first playback occurred while the project owner had YouTube playing, so it
+was not treated as audible confirmation. A repeat run used the same target,
+question, response, 89-byte target envelope, and target hash. The repeat
+dialogue receipt recorded 426 input tokens, 145 output tokens, two attempts,
+17,426.717854 ms total duration, and the safe fallback. Its Piper receipt
+recorded `played` in 4,882.317866000001 ms. The project owner then confirmed
+hearing the expected sentence through the laptop speakers.
+
 This verifies identity continuity from a live Oblivion selection through an
-external local-model and TTS turn. It does not verify that the player heard the
-audio, in-game text entry, an in-game subtitle, spatial NPC audio, lip sync, or
-a canonical game-character personality.
+external local-model and audibly confirmed TTS turn. It does not verify in-game
+text entry, an in-game subtitle, spatial NPC audio, lip sync, or a canonical
+game-character personality.

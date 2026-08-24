@@ -74,9 +74,10 @@ Spatial audio and lip synchronization are separate experiments, not assumed
 parts of this milestone.
 
 Status: partial acceptance in EXP-011. Selected NPC `00028B74` remained bound
-to a local Ollama dialogue receipt and a Piper `played` receipt. Playback used
-desktop audio and has not been associated with the in-game NPC, so the milestone
-claim is not complete.
+to a local Ollama dialogue receipt and a Piper `played` receipt. The project
+owner heard the response on a repeat run. Playback used desktop audio and has
+not been associated with the in-game NPC, so the milestone claim is not
+complete.
 
 ## Milestone 4 — memory and world state
 
