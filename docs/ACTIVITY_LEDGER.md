@@ -14,6 +14,7 @@ the activity.
 | 2026-08-24 | Complete dynamic spoken turn | EXP-005 desktop receipts | Typed input reaches grounded local dialogue and audible neural speech | Same end-to-end contract can be placed behind a game bridge | verified on one live turn |
 | 2026-08-24 | Capture clean Oblivion baseline | EXP-006 manifest, hashes, and generated configuration | Known Steam/Proton starting state with existing-save risk identified | Later adapter failures can be separated from installation drift | verified; save isolation pending |
 | 2026-08-24 | Install and verify xOBSE | EXP-007 archive, payload, loader, runtime logs, and hashes | Reversible script-extender entry point on Steam Proton | EchoForge can now target a measured plugin boundary | verified; no EchoForge plugin yet |
+| 2026-08-24 | Prove external text inside Oblivion | 19 tests; EXP-008; xOBSE and bridge logs; human visual confirmation | Atomic Node-to-xOBSE file contract and delayed in-game message display | Dialogue providers can target a measured game-side text boundary | verified proof path; NPC interaction pending |
 
 ## Decision ledger
 
@@ -74,6 +75,18 @@ the activity.
   capabilities transfer back to REI and which remain adapter-specific.
 - Stop condition: do not generalize CARDO into a universal product workflow from
   this single adapter result.
+
+### ADR-008 — supported xOBSE display path
+
+- Decision: use xOBSE's console interface to run a sanitized `MessageBoxEX`
+  statement for the first visible bridge proof.
+- Why: direct HUD queue calls returned success before and after a 120-frame
+  delay but produced no visible text under the measured Proton environment.
+- Boundary: the plugin constructs only one fixed command type from a bounded
+  response, replaces quotes and button separators, escapes percent signs, and
+  exposes no arbitrary command interface to a model or player.
+- Follow-up: replace the modal proof UI with a tested NPC-associated subtitle
+  path rather than treating `MessageBoxEX` as the final experience.
 
 ## Unmeasured fields for future activities
 

@@ -12,8 +12,11 @@ The intended player experience is simple:
 
 The current prototype proves the game-independent conversation and voice
 boundary: typed input becomes a validated response envelope, an auditable
-routing receipt, and local audible speech. It does **not** yet connect to
-Oblivion. The default demo remains deterministic and offline; the optional
+routing receipt, and local audible speech. It also includes a first original-
+Oblivion xOBSE bridge: deterministic external text can cross an atomic file
+boundary and render as an in-game message box after a save loads. This is not
+yet NPC targeting, in-game text entry, a subtitle, or attached character voice.
+The default demo remains deterministic and offline; the optional
 `--dialogue=ollama` workflow calls a local dialogue-model provider.
 
 ## Run the vertical slice
@@ -104,6 +107,24 @@ This preserves a reproducible baseline and separates Steam/Proton problems from
 EchoForge adapter problems. Do not point the runtime at saves or grant a model
 console access during this setup step.
 
+### Build the first xOBSE bridge
+
+With the 32-bit MinGW C++ compiler installed:
+
+```bash
+npm run bridge:build
+npm run bridge:fixture -- \
+  --output=/absolute/Oblivion/Data/OBSE/Plugins/EchoForge/response.txt \
+  "External response reached Oblivion."
+```
+
+Install the resulting ignored `.local/xobse/EchoForgeBridge.dll` in
+`Data/OBSE/Plugins/`, launch through xOBSE, and load a save. The plugin waits
+120 game frames, reads at most 240 bytes, sanitizes script-significant
+characters, and displays the response through xOBSE's supported `MessageBoxEX`
+path. It registers no commands, performs no network requests or game actions,
+and does not read or write save files. See EXP-008 for the measured first run.
+
 ## Architecture
 
 ```text
@@ -139,4 +160,5 @@ Planned adapters:
 
 ## Status
 
-Experimental pre-alpha. The current code is a contract harness, not a game mod.
+Experimental pre-alpha. The current code is a contract harness plus a minimal
+proof-of-path xOBSE plugin, not a complete NPC conversation mod.

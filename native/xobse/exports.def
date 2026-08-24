@@ -1,0 +1,4 @@
+LIBRARY "EchoForgeBridge"
+EXPORTS
+  OBSEPlugin_Query
+  OBSEPlugin_Load

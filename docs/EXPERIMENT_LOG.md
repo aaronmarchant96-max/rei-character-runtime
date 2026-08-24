@@ -187,3 +187,37 @@ only; it does not verify xOBSE or game integration.
 
 This verifies the script-extender prerequisite and reversible launcher path. It
 does not yet verify an EchoForge plugin, subtitle bridge, or NPC interaction.
+
+## EXP-008 — external text rendered inside original Oblivion
+
+- Date: 2026-08-24
+- Game/runtime: original Oblivion GOTY, Steam App ID `22330`, xOBSE `22.13`,
+  Proton Experimental `11.0-100`
+- Input fixture: `External response reached Oblivion.`
+- Published text: `EchoForge bridge: External response reached Oblivion.`
+- Response size: 53 bytes
+- Response SHA-256: `18ee8fbea22c6cb1e5270403f8d19ffb08e9b03a292107d96f43d500f70d8f40`
+- Plugin SHA-256: `1d2985c91b9e7d470dc2670411bde1816babcc8c5be9f9fb19793621bac18026`
+- Plugin result: xOBSE reported `EchoForgeBridge` loaded correctly
+- Load event: xOBSE recorded a successful `.ess` load; no companion `.obse`
+  file existed for that save
+- Bridge result: `plugin-loaded`, `game-initialized`,
+  `response-display-scheduled`, and `response-messagebox-script-ran`
+- Human observation: the project owner confirmed that the expected response
+  appeared in an in-game message box
+- Test result immediately before installation: 19 passed, 0 failed
+- Mode: hashes, test count, and logs measured locally; visible rendering is one
+  human-observed run
+
+Two display attempts failed before the working path:
+
+| Attempt | Implementation | Logged result | Visible result |
+|---|---|---|---|
+| 1 | Direct HUD queue during post-load callback | `response-queued` | No message observed after about two minutes |
+| 2 | Direct HUD queue after 120 main-loop frames | `response-queued-after-delay` | No message observed |
+| 3 | Sanitized `MessageBoxEX` through xOBSE console interface after 120 frames | `response-messagebox-script-ran` | Expected popup observed |
+
+This verifies an external deterministic text-to-game display path. It does not
+verify NPC targeting, player input captured inside the game, model-generated
+dialogue in the game, subtitle presentation, voice playback, save independence
+across a corpus, or a complete round trip.

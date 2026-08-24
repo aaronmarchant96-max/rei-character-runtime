@@ -41,10 +41,17 @@ Prerequisite — clean Steam/Proton baseline:
   operate without irreversible modification.
 
 Status: verified in EXP-006 on 2026-08-24. Steam Cloud restored 31 existing
-saves, so save isolation remains a required gate before adapter installation.
+saves. The project owner later authorized loading them for the bridge test; the
+plugin itself does not read or write save files.
 
 xOBSE prerequisite status: release `22.13` installed reversibly and verified by
-loader/runtime logs in EXP-007. No EchoForge plugin is installed yet.
+loader/runtime logs in EXP-007.
+
+Bridge status: partial acceptance in EXP-008. A deterministic external response
+crossed the file boundary and appeared in-game through `MessageBoxEX`. The
+plugin load, save event, delayed main-loop task, and script execution were
+logged. NPC targeting, in-game text entry, and subtitle display remain open, so
+the milestone claim is not complete.
 
 Claim: targeting one NPC and entering text can round-trip through an xOBSE game
 adapter and display the validated response as a subtitle without modifying a
