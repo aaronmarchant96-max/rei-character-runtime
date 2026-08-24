@@ -18,9 +18,23 @@ This is a target, not a claim about the current build.
 
 ## Current verified capability
 
-At commit `445d38e`, typed CLI input produces a deterministic response envelope,
-routing receipt, subtitle, TTS request, and audible local speech through either
-Speech Dispatcher or Piper. No game adapter or dialogue model is connected.
+Typed CLI input can reach either a deterministic provider or a local Ollama
+dialogue provider, pass through bounded fact and identity grounding, and
+produce a subtitle, routing receipt, TTS request, and audible local speech
+through Speech Dispatcher or Piper. The local verification suite passed 19
+tests on 2026-08-24. A minimal xOBSE adapter also displayed deterministic
+external text inside original Oblivion through a message box. NPC selection,
+in-game input, subtitle presentation, and voice attachment remain unverified.
+
+## Strategic role
+
+REI AI is the primary long-term system. EchoForge is a bounded, independently
+useful proving ground for REI routing, local inference, grounding, latency,
+voice, evidence receipts, and safe action mediation in an unfamiliar runtime.
+
+The Oblivion adapter is not evidence that CARDO can build any product. It is one
+falsifiable transfer experiment. Reusable findings should flow back into REI;
+game-specific code should remain behind the adapter boundary.
 
 ## Product hypothesis
 
@@ -50,3 +64,4 @@ two adapters are measured on a declared basis.
 - Giving a model arbitrary console or save-file access
 - Claiming production stability, actor equivalence, or commercial clearance
 - Solving spatial audio, lip synchronization, memory, and actions in one milestone
+- Turning EchoForge into a universal creation platform before one game bridge is verified

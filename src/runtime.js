@@ -9,6 +9,29 @@ function requireText(value, field) {
   return value.trim();
 }
 
+function normalizeProviderReceipt(receipt) {
+  if (!receipt || typeof receipt !== "object" || Array.isArray(receipt)) return null;
+  return {
+    provider: String(receipt.provider ?? "unknown"),
+    model: String(receipt.model ?? "unknown"),
+    inputTokens: Math.max(0, Number(receipt.inputTokens) || 0),
+    outputTokens: Math.max(0, Number(receipt.outputTokens) || 0),
+    totalDurationMs: Math.max(0, Number(receipt.totalDurationMs) || 0),
+    loadDurationMs: Math.max(0, Number(receipt.loadDurationMs) || 0),
+    generationDurationMs: Math.max(0, Number(receipt.generationDurationMs) || 0),
+    providerApiCostUsd: Math.max(0, Number(receipt.providerApiCostUsd) || 0),
+    attempts: Math.max(0, Number(receipt.attempts) || 0),
+    groundingStatus: ["passed", "fallback"].includes(receipt.groundingStatus)
+      ? receipt.groundingStatus
+      : "unknown",
+    fallbackUsed: receipt.fallbackUsed === true,
+    validationFailures: Array.isArray(receipt.validationFailures)
+      ? receipt.validationFailures.map(String)
+      : [],
+    measurementMode: receipt.measurementMode === "measured" ? "measured" : "unknown"
+  };
+}
+
 export function chooseRoute(playerText) {
   const text = requireText(playerText, "playerText");
   const wordCount = text.split(/\s+/u).length;
@@ -48,6 +71,7 @@ export function createCharacterRuntime({ dialogueProvider, clock = performance }
       proposedActions,
       executedActions: [],
       ttsRequest: { characterId: id, text: speech },
+      dialogueReceipt: normalizeProviderReceipt(proposal?.providerReceipt),
       receipt: {
         characterId: id,
         route: routeDecision.route,

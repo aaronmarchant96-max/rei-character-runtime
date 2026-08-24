@@ -32,9 +32,15 @@ action is data; it is never proof that the action is permitted.
   and emits the response and evidence receipt.
 - `src/voice.js` validates TTS requests and delegates playback to an external
   local backend.
+- `src/bridge.js` validates and atomically publishes a bounded text response for
+  a game adapter.
 - `src/cli.js` is the current input and diagnostic harness.
-- `test/runtime.test.js` verifies routing, validation, action non-execution, and
-  voice command boundaries without requiring live audio.
+- `native/xobse/echoforge_bridge.cpp` is a minimal original-Oblivion adapter. It
+  reads the response after a successful save load and schedules an xOBSE
+  `MessageBoxEX` call on the game main loop.
+- The test suite verifies routing, validation, action non-execution, voice
+  command boundaries, and deterministic atomic bridge publication without
+  requiring live audio or a game installation.
 
 ## Current voice paths
 
@@ -46,14 +52,27 @@ Effect:  ttsRequest -> Piper -> temporary WAV -> PulseAudio -> desktop audio
 Piper output is generated in a unique temporary directory and deleted after
 playback. The model and Python environment live in ignored local directories.
 
-## Planned game boundary
+## Current game boundary
 
-The first Oblivion adapter should begin read-only:
+The first Oblivion adapter is intentionally narrow:
+
+```text
+Node fixture -> atomic response.txt -> xOBSE plugin -> delayed MessageBoxEX
+```
+
+Verified in EXP-008:
+
+- xOBSE loads the 32-bit plugin under Steam Proton.
+- A successful save-load event schedules display after 120 game frames.
+- The plugin reads no more than 240 bytes from one declared response file.
+- No plugin command, network request, model call, action, or save mutation exists.
+
+The next adapter increments remain:
 
 1. Detect whether the bridge is connected.
 2. Read the selected reference and current location.
 3. Send allow-listed facts to the runtime.
-4. Display a returned subtitle.
+4. Replace the proof message box with an NPC-associated subtitle.
 5. Play voice externally before attempting in-engine audio.
 
 Quest state mutation, inventory changes, spawning, combat control, arbitrary
