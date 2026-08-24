@@ -30,6 +30,24 @@ The `voice` command uses the machine's installed Speech Dispatcher backend and
 waits for playback to complete. It is a local plumbing test, not character voice
 cloning; voice quality and alternative backends will be evaluated separately.
 
+### Optional local neural voice
+
+Piper runs locally but is installed separately under its GPL-3.0 license:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install piper-tts
+mkdir -p .local/voices
+.venv/bin/python3 -m piper.download_voices \
+  --data-dir .local/voices en_US-lessac-medium
+npm run voice:neural -- "Have you seen anything near the ruins?"
+```
+
+The selected model and its metadata remain local and are excluded from Git.
+Its model card identifies the source dataset and training provenance. Treat
+commercial voice rights as a separate clearance question; this prototype does
+not clone a Bethesda performer.
+
 The demo provider is deterministic and offline. That makes the contract
 testable before model, voice, and game integrations introduce nondeterminism.
 

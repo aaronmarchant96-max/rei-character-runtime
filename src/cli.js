@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 import { createCharacterRuntime, createDemoProvider } from "./runtime.js";
-import { speakTtsRequest } from "./voice.js";
+import { speakPiperTtsRequest, speakTtsRequest } from "./voice.js";
 
 const args = process.argv.slice(2);
 const shouldSpeak = args.includes("--speak");
-const playerText = args.filter((argument) => argument !== "--speak").join(" ").trim();
+const backendArgument = args.find((argument) => argument.startsWith("--backend="));
+const backend = backendArgument?.split("=", 2)[1] ?? "system";
+const playerText = args
+  .filter((argument) => argument !== "--speak" && !argument.startsWith("--backend="))
+  .join(" ")
+  .trim();
 
 if (!playerText) {
   console.error('Usage: npm run demo -- "Your question"');
@@ -22,7 +27,9 @@ if (!playerText) {
   });
 
   if (shouldSpeak) {
-    result.voiceReceipt = await speakTtsRequest(result.ttsRequest);
+    result.voiceReceipt = backend === "piper"
+      ? await speakPiperTtsRequest(result.ttsRequest)
+      : await speakTtsRequest(result.ttsRequest);
   }
 
   console.log(JSON.stringify(result, null, 2));

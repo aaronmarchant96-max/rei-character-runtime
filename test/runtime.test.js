@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { chooseRoute, createCharacterRuntime } from "../src/runtime.js";
-import { speakTtsRequest } from "../src/voice.js";
+import { speakPiperTtsRequest, speakTtsRequest } from "../src/voice.js";
 
 test("routine input takes the economy route", () => {
   assert.deepEqual(chooseRoute("Any news from the road?"), {
@@ -93,4 +93,37 @@ test("the voice adapter fails closed when playback fails", async () => {
     ),
     /local speech playback failed: backend unavailable/u
   );
+});
+
+test("Piper generates then plays neural speech with an evidence receipt", async () => {
+  const calls = [];
+  let now = 100;
+  const receipt = await speakPiperTtsRequest(
+    { characterId: "guide", text: "The old road remembers." },
+    {
+      clock: { now: () => (now += 25) },
+      pythonPath: "/test/python",
+      modelDirectory: "/test/voices",
+      runner: (command, args, callback) => {
+        calls.push({ command, args });
+        callback(null);
+      }
+    }
+  );
+
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].command, "/test/python");
+  assert.deepEqual(calls[0].args.slice(0, 6), [
+    "-m", "piper", "--data-dir", "/test/voices", "-m", "en_US-lessac-medium"
+  ]);
+  assert.equal(calls[0].args.at(-1), "The old road remembers.");
+  assert.equal(calls[1].command, "paplay");
+  assert.deepEqual(receipt, {
+    characterId: "guide",
+    backend: "piper-local",
+    model: "en_US-lessac-medium",
+    status: "played",
+    latencyMs: 25,
+    measurementMode: "measured"
+  });
 });

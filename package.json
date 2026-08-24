@@ -7,6 +7,7 @@
   "scripts": {
     "demo": "node src/cli.js",
     "voice": "node src/cli.js --speak",
+    "voice:neural": "node src/cli.js --speak --backend=piper",
     "test": "node --test",
     "check": "node --check src/*.js && node --test"
   },
