@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { chooseRoute, createCharacterRuntime } from "../src/runtime.js";
+import { speakTtsRequest } from "../src/voice.js";
 
 test("routine input takes the economy route", () => {
   assert.deepEqual(chooseRoute("Any news from the road?"), {
@@ -57,5 +58,39 @@ test("invalid input and invalid provider output fail closed", async () => {
   await assert.rejects(
     converse({ character: { id: "npc", name: "NPC" }, playerText: " " }),
     /playerText must be a non-empty string/u
+  );
+});
+
+test("the voice adapter speaks validated text and records measured playback", async () => {
+  const spoken = [];
+  let now = 20;
+  const receipt = await speakTtsRequest(
+    { characterId: "guide", text: "The road is quiet tonight." },
+    {
+      clock: { now: () => (now += 10) },
+      runner: (text, callback) => {
+        spoken.push(text);
+        callback(null);
+      }
+    }
+  );
+
+  assert.deepEqual(spoken, ["The road is quiet tonight."]);
+  assert.deepEqual(receipt, {
+    characterId: "guide",
+    backend: "speech-dispatcher",
+    status: "played",
+    latencyMs: 10,
+    measurementMode: "measured"
+  });
+});
+
+test("the voice adapter fails closed when playback fails", async () => {
+  await assert.rejects(
+    speakTtsRequest(
+      { characterId: "guide", text: "Can you hear me?" },
+      { runner: (_text, callback) => callback(new Error("backend unavailable")) }
+    ),
+    /local speech playback failed: backend unavailable/u
   );
 });

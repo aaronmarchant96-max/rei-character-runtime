@@ -23,7 +23,12 @@ Node.js 20 or newer is the only requirement.
 ```bash
 npm test
 npm run demo -- "Have you seen anything near the ruins?"
+npm run voice -- "Have you seen anything near the ruins?"
 ```
+
+The `voice` command uses the machine's installed Speech Dispatcher backend and
+waits for playback to complete. It is a local plumbing test, not character voice
+cloning; voice quality and alternative backends will be evaluated separately.
 
 The demo provider is deterministic and offline. That makes the contract
 testable before model, voice, and game integrations introduce nondeterminism.

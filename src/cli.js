@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import { createCharacterRuntime, createDemoProvider } from "./runtime.js";
+import { speakTtsRequest } from "./voice.js";
 
-const playerText = process.argv.slice(2).join(" ").trim();
+const args = process.argv.slice(2);
+const shouldSpeak = args.includes("--speak");
+const playerText = args.filter((argument) => argument !== "--speak").join(" ").trim();
 
 if (!playerText) {
   console.error('Usage: npm run demo -- "Your question"');
@@ -17,6 +20,10 @@ if (!playerText) {
     playerText,
     world: { location: "A fictional roadside inn" }
   });
+
+  if (shouldSpeak) {
+    result.voiceReceipt = await speakTtsRequest(result.ttsRequest);
+  }
 
   console.log(JSON.stringify(result, null, 2));
 }
