@@ -162,3 +162,28 @@ The executable, launcher, and master-file hashes were unchanged across the
 first launch. Before any adapter experiment, existing saves require an explicit
 isolation or backup procedure. This experiment verifies installation and launch
 only; it does not verify xOBSE or game integration.
+
+## EXP-007 — reversible xOBSE runtime baseline
+
+- Date: 2026-08-24
+- xOBSE release: `22.13`
+- Official release archive size: 5,520,478 bytes
+- Official release archive SHA-256: `92d18411a9da803ffaac8c0b005cb6b37c4f9ce2f1571215f39363760d832bf2`
+- Installation mode: official Steam Proton launcher substitution
+- Original launcher: preserved with its EXP-006 SHA-256 in a hash-labelled
+  backup file
+- Loader result: hooked the Steam Oblivion process and launched successfully
+- Runtime result: `OBSE: initialize (version = 22.13 010201A0)`
+- Executable CRC reported by the loader: `A2408F04`
+- Runtime result: plugin directory detected, engine reported `patched`, and
+  xOBSE deinitialized normally
+- `obse_loader.log` SHA-256: `74ec2dcdafc2abe8ad74873e1958df4e361c954922c85d8835b9cc5abd87e48f`
+- `obse.log` SHA-256: `33ec5306cf0ab8bb20d499ce1389a4986ac7bda175f11350330f426dd1808b4b`
+- Post-launch `Oblivion.exe` and `Oblivion.esm` hashes: unchanged from EXP-006
+- Save handling: no save was intentionally loaded or modified by the
+  installation procedure
+- Mode: archive metadata, installed files, hashes, and runtime logs measured on
+  the target laptop
+
+This verifies the script-extender prerequisite and reversible launcher path. It
+does not yet verify an EchoForge plugin, subtitle bridge, or NPC interaction.

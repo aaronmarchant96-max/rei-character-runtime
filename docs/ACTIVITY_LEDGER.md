@@ -13,6 +13,7 @@ the activity.
 | 2026-08-24 | Add grounding and retry gate | 16 tests; two EXP-004 live controls | Unsupported answers are corrected or replaced before TTS | Game adapters can rely on an explicit pre-voice policy | verified on two controls |
 | 2026-08-24 | Complete dynamic spoken turn | EXP-005 desktop receipts | Typed input reaches grounded local dialogue and audible neural speech | Same end-to-end contract can be placed behind a game bridge | verified on one live turn |
 | 2026-08-24 | Capture clean Oblivion baseline | EXP-006 manifest, hashes, and generated configuration | Known Steam/Proton starting state with existing-save risk identified | Later adapter failures can be separated from installation drift | verified; save isolation pending |
+| 2026-08-24 | Install and verify xOBSE | EXP-007 archive, payload, loader, runtime logs, and hashes | Reversible script-extender entry point on Steam Proton | EchoForge can now target a measured plugin boundary | verified; no EchoForge plugin yet |
 
 ## Decision ledger
 

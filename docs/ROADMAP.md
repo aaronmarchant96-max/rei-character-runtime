@@ -43,6 +43,9 @@ Prerequisite — clean Steam/Proton baseline:
 Status: verified in EXP-006 on 2026-08-24. Steam Cloud restored 31 existing
 saves, so save isolation remains a required gate before adapter installation.
 
+xOBSE prerequisite status: release `22.13` installed reversibly and verified by
+loader/runtime logs in EXP-007. No EchoForge plugin is installed yet.
+
 Claim: targeting one NPC and entering text can round-trip through an xOBSE game
 adapter and display the validated response as a subtitle without modifying a
 save irreversibly.
