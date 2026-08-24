@@ -1,0 +1,85 @@
+import { appendFile, mkdir } from "node:fs/promises";
+import { dirname, isAbsolute } from "node:path";
+import { parseTargetEnvelope } from "./target.js";
+
+const UNKNOWN_TARGET_FACTS = Object.freeze([
+  "canonicalName",
+  "currentLocation",
+  "canonicalBiography",
+  "canonicalDialogue"
+]);
+
+function normalizeQuestion(value) {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new TypeError("question must be a non-empty string");
+  }
+  const question = value.trim();
+  if (question.length > 1_000) throw new RangeError("question must be at most 1000 characters");
+  if (/[\u0000-\u001F\u007F]/u.test(question)) {
+    throw new TypeError("question must not contain control characters");
+  }
+  return question;
+}
+
+function normalizeTarget(target) {
+  return parseTargetEnvelope(JSON.stringify(target));
+}
+
+export function describeTargetKnowledge(target) {
+  const normalized = normalizeTarget(target);
+  return {
+    knownFacts: {
+      game: normalized.game,
+      referenceFormId: normalized.referenceFormId,
+      actorKind: normalized.actorKind
+    },
+    unknownFacts: [...UNKNOWN_TARGET_FACTS]
+  };
+}
+
+export function createSpokenTurnRecord({ target, question, turn }) {
+  const normalized = normalizeTarget(target);
+  const normalizedQuestion = normalizeQuestion(question);
+  const characterId = `${normalized.game}:${normalized.referenceFormId}`;
+  const observedCharacterIds = [
+    turn?.receipt?.characterId,
+    turn?.ttsRequest?.characterId,
+    turn?.voiceReceipt?.characterId
+  ];
+  if (!observedCharacterIds.every((value) => value === characterId)) {
+    throw new TypeError("turn failed selected-target identity continuity");
+  }
+  if ((turn?.proposedActions?.length ?? 0) > 0 || (turn?.executedActions?.length ?? 0) > 0) {
+    throw new TypeError("supervised target turn must not contain actions");
+  }
+  if (turn?.augmentation?.humanControl !== "player-decides"
+    || turn?.augmentation?.actionAuthority !== "none") {
+    throw new TypeError("supervised target turn must preserve human control");
+  }
+
+  return {
+    schemaVersion: 1,
+    event: "spoken-turn",
+    characterId,
+    target: normalized,
+    question: normalizedQuestion,
+    response: String(turn?.speech ?? ""),
+    augmentation: turn.augmentation,
+    dialogueReceipt: turn?.dialogueReceipt ?? null,
+    routeReceipt: turn?.receipt ?? null,
+    voiceReceipt: turn?.voiceReceipt ?? null,
+    proposedActions: [],
+    executedActions: []
+  };
+}
+
+export async function appendSessionRecord(outputPath, record) {
+  if (typeof outputPath !== "string" || !isAbsolute(outputPath)) {
+    throw new TypeError("outputPath must be an absolute path");
+  }
+  if (!record || typeof record !== "object" || Array.isArray(record)) {
+    throw new TypeError("record must be an object");
+  }
+  await mkdir(dirname(outputPath), { recursive: true });
+  await appendFile(outputPath, `${JSON.stringify(record)}\n`, { encoding: "utf8", mode: 0o600 });
+}

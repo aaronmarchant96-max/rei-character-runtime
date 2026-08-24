@@ -166,6 +166,13 @@ test("Ollama receives bounded character facts and returns literal metrics", asyn
   assert.deepEqual(proposal, {
     speech: "I heard a wolf.",
     actions: [],
+    augmentation: {
+      answerMode: "known",
+      usedFactKeys: ["observation"],
+      uncertainty: "none",
+      humanControl: "player-decides",
+      actionAuthority: "none"
+    },
     providerReceipt: {
       provider: "ollama-local",
       model: "qwen3:1.7b",
@@ -215,6 +222,13 @@ test("Ollama retries an ungrounded answer then falls back safely", async () => {
 
   assert.equal(attempts, 2);
   assert.equal(proposal.speech, "I can't say that I've noticed anything certain about that.");
+  assert.deepEqual(proposal.augmentation, {
+    answerMode: "unknown",
+    usedFactKeys: [],
+    uncertainty: "explicit",
+    humanControl: "player-decides",
+    actionAuthority: "none"
+  });
   assert.equal(proposal.providerReceipt.groundingStatus, "fallback");
   assert.equal(proposal.providerReceipt.fallbackUsed, true);
   assert.equal(proposal.providerReceipt.inputTokens, 20);

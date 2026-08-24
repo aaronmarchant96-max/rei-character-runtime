@@ -34,7 +34,11 @@ action is data; it is never proof that the action is permitted.
   local backend.
 - `src/bridge.js` validates and atomically publishes a bounded text response for
   a game adapter.
+- `src/session.js` validates target knowledge, identity continuity, human
+  control, and append-only local session evidence.
 - `src/cli.js` is the current input and diagnostic harness.
+- `scripts/run-oblivion-session.mjs` supervises a player-authored sequence of
+  selected-target turns and owns only the local model process it starts.
 - `native/xobse/echoforge_bridge.cpp` is a minimal original-Oblivion adapter. It
   reads the response after a successful save load and schedules an xOBSE
   `MessageBoxEX` call on the game main loop. It also edge-detects `U` or `F10`,
@@ -102,6 +106,14 @@ Verified in EXP-011:
 - Proposed and executed action arrays remain empty.
 - Playback is external desktop audio; no spatial game-audio claim is made.
 
+Verified in EXP-012:
+
+- One command supervised local-model startup, target selection, typed input,
+  validation, Piper playback, and append-only evidence.
+- The actual response envelope retained `answerMode`, `usedFactKeys`, explicit
+  uncertainty, `player-decides`, and `actionAuthority: none`.
+- The measured unknown answer cited no facts and proposed/executed no actions.
+
 The next adapter increments remain:
 
 1. Add the selected actor's current location to the bounded envelope.
@@ -118,6 +130,9 @@ and tested.
 ## Evidence receipt contract
 
 A successful turn currently records character ID, selected route, route reason,
-measured runtime latency, and measurement mode. Voice playback additionally
-records backend, model where applicable, status, and measured synthesis-plus-
-playback latency.
+measured runtime latency, and measurement mode. Local-model turns also carry an
+augmentation record declaring whether the response is known or unknown, the
+supplied fact keys it used, explicit uncertainty, human decision authority, and
+the absence of model action authority. Voice playback additionally records
+backend, model where applicable, status, and measured synthesis-plus-playback
+latency.

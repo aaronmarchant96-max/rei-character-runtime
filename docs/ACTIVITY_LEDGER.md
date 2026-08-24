@@ -18,6 +18,7 @@ the activity.
 | 2026-08-24 | Add one-key Oblivion character targeting | 19 tests; EXP-009; bridge log; human confirmation of visible ID | Edge-triggered actor-only crosshair selection with a Form-ID receipt | A future dialogue request can be bound to a player-selected character | verified with `U`; external round trip pending |
 | 2026-08-24 | Export selected Oblivion actor identity | 22 tests; EXP-010; 94-byte live envelope and hash receipt | Atomic game-to-runtime target contract with strict external validation | Dialogue orchestration can receive the exact player-selected reference | verified for one creature; name/location pending |
 | 2026-08-24 | Bind selected NPC to local dialogue and voice | 24 tests; EXP-011; Ollama/Piper receipts; human audible confirmation | Exact game Form ID persists through routing, grounding, and playback | One selected actor can drive a safe external spoken turn | audible desktop playback verified; spatial attachment pending |
+| 2026-08-24 | Encode a supervised augmentation session | 27 tests; EXP-012 JSONL and live receipts | One command exposes knowns/unknowns, preserves player authority, validates dialogue, speaks it, and records evidence | Repeated actor questions can use the same inspectable workflow | verified on one external turn; in-game UI pending |
 
 ## Decision ledger
 
@@ -90,6 +91,23 @@ the activity.
   exposes no arbitrary command interface to a model or player.
 - Follow-up: replace the modal proof UI with a tested NPC-associated subtitle
   path rather than treating `MessageBoxEX` as the final experience.
+
+### ADR-009 — augmentation support belongs in the response contract
+
+- Decision: carry epistemic support alongside actual in-character responses:
+  known/unknown mode, exact supplied fact keys, explicit uncertainty, retained
+  human decision authority, and no model action authority.
+- Why: augmentation should improve the player's ability to understand and
+  decide without polluting character speech with system language or turning the
+  model into an autonomous game controller.
+- A activity: the player selects a character, asks a question, and hears the
+  validated response.
+- B activity: the supervised launcher consolidates model startup, target
+  inspection, repeated turns, playback, and evidence capture.
+- C activity: the response contract and experiment ledger make future
+  grounding and workflow improvements comparable rather than anecdotal.
+- Test: every recorded supervised turn must retain identity continuity, human
+  control, zero action authority, and the response's fact-use/uncertainty state.
 
 ## Unmeasured fields for future activities
 

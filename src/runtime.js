@@ -32,6 +32,23 @@ function normalizeProviderReceipt(receipt) {
   };
 }
 
+function normalizeAugmentation(augmentation) {
+  if (!augmentation || typeof augmentation !== "object" || Array.isArray(augmentation)) return null;
+  const answerMode = augmentation.answerMode;
+  if (answerMode !== "known" && answerMode !== "unknown") {
+    throw new TypeError("proposal.augmentation.answerMode must be known or unknown");
+  }
+  return {
+    answerMode,
+    usedFactKeys: Array.isArray(augmentation.usedFactKeys)
+      ? augmentation.usedFactKeys.map(String)
+      : [],
+    uncertainty: answerMode === "unknown" ? "explicit" : "none",
+    humanControl: "player-decides",
+    actionAuthority: "none"
+  };
+}
+
 export function chooseRoute(playerText) {
   const text = requireText(playerText, "playerText");
   const wordCount = text.split(/\s+/u).length;
@@ -70,6 +87,7 @@ export function createCharacterRuntime({ dialogueProvider, clock = performance }
       subtitle: speech,
       proposedActions,
       executedActions: [],
+      augmentation: normalizeAugmentation(proposal?.augmentation),
       ttsRequest: { characterId: id, text: speech },
       dialogueReceipt: normalizeProviderReceipt(proposal?.providerReceipt),
       receipt: {

@@ -79,6 +79,11 @@ owner heard the response on a repeat run. Playback used desktop audio and has
 not been associated with the in-game NPC, so the milestone claim is not
 complete.
 
+EXP-012 adds a repeatable supervised session around this partial path. It does
+not complete the milestone: playback remains desktop audio, but the player can
+now author multiple questions while the response envelope exposes grounding
+and preserves human control.
+
 ## Milestone 4 — memory and world state
 
 Claim: bounded retrieved memories and allow-listed game facts improve character

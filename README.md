@@ -160,6 +160,21 @@ are imported, EchoForge uses an explicit generic actor label and the grounding
 gate may return a cautious uncertainty response. Audio currently plays through
 the computer, not from the NPC's in-game position. See EXP-011.
 
+For a repeatable human-controlled loop, use one command:
+
+```bash
+npm run oblivion:session
+```
+
+The launcher starts or reuses the project-local model, waits for a `U`-selected
+actor, accepts questions typed by the player, validates and speaks each answer,
+and retains an ignored local JSONL session record. Each model response carries
+an augmentation record alongside its in-character speech: `known` or
+`unknown`, the exact supplied fact keys used, explicit uncertainty, retained
+human control, and no model action authority. Commands are `/retarget`,
+`/facts`, and `/quit`. See EXP-012 and the
+[augmentation design](docs/AUGMENTATION_SYSTEM.md).
+
 ## Architecture
 
 ```text
@@ -183,6 +198,7 @@ Planned adapters:
 - [Roadmap](docs/ROADMAP.md) — falsifiable milestones
 - [Experiment log](docs/EXPERIMENT_LOG.md) — measured facts and observations
 - [Activity ledger](docs/ACTIVITY_LEDGER.md) — effort converted into capability
+- [Augmentation design](docs/AUGMENTATION_SYSTEM.md) — human control and A/B/C improvement model
 - [Voice and rights](docs/VOICE_AND_RIGHTS.md) — licensing and consent boundaries
 
 ## Boundaries

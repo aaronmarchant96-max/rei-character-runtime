@@ -133,6 +133,16 @@ function sumReceipts(receipts, model, validation) {
   };
 }
 
+function createAugmentation(answerMode, usedFactKeys = []) {
+  return {
+    answerMode,
+    usedFactKeys: usedFactKeys.map(String),
+    uncertainty: answerMode === "unknown" ? "explicit" : "none",
+    humanControl: "player-decides",
+    actionAuthority: "none"
+  };
+}
+
 export function createOllamaDialogueProvider({
   fetchImpl = globalThis.fetch,
   endpoint = DEFAULT_ENDPOINT,
@@ -199,6 +209,7 @@ export function createOllamaDialogueProvider({
         return {
           speech: proposal.speech,
           actions: [],
+          augmentation: createAugmentation(proposal.answerMode, proposal.usedFactKeys),
           providerReceipt: sumReceipts(receipts, model, {
             groundingStatus: "passed",
             fallbackUsed: false,
@@ -214,6 +225,7 @@ export function createOllamaDialogueProvider({
     return {
       speech: "I can't say that I've noticed anything certain about that.",
       actions: [],
+      augmentation: createAugmentation("unknown"),
       providerReceipt: sumReceipts(receipts, model, {
         groundingStatus: "fallback",
         fallbackUsed: true,

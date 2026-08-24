@@ -325,3 +325,42 @@ This verifies identity continuity from a live Oblivion selection through an
 external local-model and audibly confirmed TTS turn. It does not verify in-game
 text entry, an in-game subtitle, spatial NPC audio, lip sync, or a canonical
 game-character personality.
+
+## EXP-012 — supervised augmentation session carries epistemic support
+
+- Date: 2026-08-24
+- Command: `npm run oblivion:session`
+- Selected reference Form ID: `00028B77`
+- Actor kind: `npc`
+- Human-authored question: `Have you seen anything strange near the ruins?`
+- Response: `I can't say that I've noticed anything certain about that.`
+- Augmentation result: `answerMode=unknown`, no fact keys used, uncertainty
+  explicit, `humanControl=player-decides`, `actionAuthority=none`
+- Human input authority: `question-authored`
+- Dialogue provider/model: `ollama-local` / `qwen3:1.7b`
+- Input/output tokens: 437 / 70
+- Dialogue attempts: 2
+- Dialogue duration: 14,161.799822 ms
+- Runtime turn latency: 14,181.127207 ms
+- Grounding result: fallback after `irrelevant-fact-citation` and
+  `unknown-cites-facts` validation failures
+- Provider API cost: $0
+- Proposed/executed actions: 0 / 0
+- Voice backend/model: `piper-local` / `en_US-lessac-medium`
+- Voice status: `played`; latency: 5,022.2810629999985 ms
+- Test result immediately before the live turn: 27 passed, 0 failed
+- Evidence format: three local JSONL records—session start, spoken turn, and
+  session stop
+- Mode: target, response, augmentation, dialogue, routing, and voice values
+  copied literally from the live retained record
+
+The runner exposed the facts known from the target envelope and named the
+canonical name, location, biography, and dialogue as unknown before accepting
+the question. The model's invalid attempts were not spoken. The safe fallback
+preserved those unknowns, and the launcher stopped normally after `/quit`.
+
+This verifies a repeatable external human–AI augmentation loop in which the
+human selects the actor and authors the question while the system supplies a
+grounded spoken response and inspectable support. It does not verify that audio
+was heard during this particular run, in-game text entry, subtitles, spatial
+audio, canonical character facts, memory, or game actions.
