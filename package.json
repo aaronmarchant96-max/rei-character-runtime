@@ -5,9 +5,11 @@
   "description": "Evidence-driven runtime for contextual, voiced game characters.",
   "type": "module",
   "scripts": {
+    "ollama:serve": "OLLAMA_HOST=127.0.0.1:11434 OLLAMA_NO_CLOUD=1 OLLAMA_MODELS=$PWD/.local/ollama-models .local/ollama/bin/ollama serve",
     "demo": "node src/cli.js",
     "voice": "node src/cli.js --speak",
     "voice:neural": "node src/cli.js --speak --backend=piper",
+    "npc:local": "node src/cli.js --dialogue=ollama --speak --backend=piper",
     "test": "node --test",
     "check": "node --check src/*.js && node --test"
   },

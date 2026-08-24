@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { chooseRoute, createCharacterRuntime } from "../src/runtime.js";
+import { createOllamaDialogueProvider } from "../src/dialogue.js";
 import { speakPiperTtsRequest, speakTtsRequest } from "../src/voice.js";
 
 test("routine input takes the economy route", () => {
@@ -126,4 +127,138 @@ test("Piper generates then plays neural speech with an evidence receipt", async 
     latencyMs: 25,
     measurementMode: "measured"
   });
+});
+
+test("Ollama receives bounded character facts and returns literal metrics", async () => {
+  let request;
+  const provider = createOllamaDialogueProvider({
+    fetchImpl: async (_url, options) => {
+      request = JSON.parse(options.body);
+      return {
+        ok: true,
+        json: async () => ({
+          message: { content: JSON.stringify({
+            speech: "I heard a wolf.",
+            actions: [],
+            usedFactKeys: ["observation"],
+            answerMode: "known"
+          }) },
+          prompt_eval_count: 88,
+          eval_count: 12,
+          total_duration: 2_500_000_000,
+          load_duration: 500_000_000,
+          eval_duration: 1_200_000_000
+        })
+      };
+    }
+  });
+
+  const proposal = await provider({
+    character: { name: "Mara", persona: "A cautious traveler" },
+    playerText: "What was your observation?",
+    world: { location: "Lantern Rest", observation: "I heard a wolf." }
+  });
+
+  assert.equal(request.think, false);
+  assert.equal(request.format.required.includes("speech"), true);
+  assert.match(request.messages[0].content, /Lantern Rest/u);
+  assert.deepEqual(proposal, {
+    speech: "I heard a wolf.",
+    actions: [],
+    providerReceipt: {
+      provider: "ollama-local",
+      model: "qwen3:1.7b",
+      inputTokens: 88,
+      outputTokens: 12,
+      totalDurationMs: 2500,
+      loadDurationMs: 500,
+      generationDurationMs: 1200,
+      providerApiCostUsd: 0,
+      attempts: 1,
+      groundingStatus: "passed",
+      fallbackUsed: false,
+      validationFailures: [],
+      measurementMode: "measured"
+    }
+  });
+});
+
+test("Ollama retries an ungrounded answer then falls back safely", async () => {
+  let attempts = 0;
+  const provider = createOllamaDialogueProvider({
+    fetchImpl: async () => {
+      attempts += 1;
+      return {
+        ok: true,
+        json: async () => ({
+          message: { content: JSON.stringify({
+            speech: "Travelers carry maps, weapons, and ancient secrets.",
+            actions: [],
+            usedFactKeys: [],
+            answerMode: "known"
+          }) },
+          prompt_eval_count: 10,
+          eval_count: 5,
+          total_duration: 1_000_000_000,
+          eval_duration: 500_000_000
+        })
+      };
+    }
+  });
+
+  const proposal = await provider({
+    character: { name: "Mara", persona: "A traveler" },
+    playerText: "What do the travelers carry?",
+    world: { location: "Lantern Rest" }
+  });
+
+  assert.equal(attempts, 2);
+  assert.equal(proposal.speech, "I can't say that I've noticed anything certain about that.");
+  assert.equal(proposal.providerReceipt.groundingStatus, "fallback");
+  assert.equal(proposal.providerReceipt.fallbackUsed, true);
+  assert.equal(proposal.providerReceipt.inputTokens, 20);
+  assert.equal(proposal.providerReceipt.validationFailures.includes("unknown-required"), true);
+});
+
+test("Ollama rejects unknown answers that cite facts", async () => {
+  const provider = createOllamaDialogueProvider({
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => ({
+        message: { content: JSON.stringify({
+          speech: "I do not know, though we are at Lantern Rest.",
+          actions: [],
+          usedFactKeys: ["location"],
+          answerMode: "unknown"
+        }) }
+      })
+    })
+  });
+
+  const proposal = await provider({
+    character: { name: "Mara", persona: "A traveler" },
+    playerText: "Where are we?",
+    world: { location: "Lantern Rest" }
+  });
+
+  assert.equal(proposal.providerReceipt.groundingStatus, "fallback");
+  assert.equal(proposal.providerReceipt.validationFailures.includes("unknown-cites-facts"), true);
+});
+
+test("Ollama fails closed on invalid structured dialogue", async () => {
+  const provider = createOllamaDialogueProvider({
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => ({ message: { content: "not-json" } })
+    })
+  });
+
+  await assert.rejects(
+    provider({
+      character: { name: "Mara", persona: "A traveler" },
+      playerText: "Hello",
+      world: {}
+    }),
+    /invalid structured dialogue/u
+  );
 });
