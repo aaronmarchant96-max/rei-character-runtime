@@ -337,8 +337,8 @@ test("Ollama prompt and validation share the same truncated fact key", async () 
     world: { [originalKey]: "The dragon is sleeping" }
   });
 
-  assert.match(request.messages[0].content, new RegExp(normalizedKey, "u"));
-  assert.doesNotMatch(request.messages[0].content, new RegExp(originalKey, "u"));
+  assert.equal(request.messages[0].content.includes(normalizedKey), true);
+  assert.equal(request.messages[0].content.includes(originalKey), false);
   assert.equal(proposal.providerReceipt.attempts, 1);
   assert.equal(proposal.providerReceipt.groundingStatus, "passed");
 });
@@ -372,4 +372,28 @@ test("Ollama accepts identity-backed answers using explicit identity fact keys",
   assert.match(request.messages[0].content, /"identity\.persona":"A cautious traveler"/u);
   assert.equal(proposal.providerReceipt.attempts, 1);
   assert.equal(proposal.providerReceipt.groundingStatus, "passed");
+});
+
+test("Ollama rejects world fact keys that collide after normalization", async () => {
+  let requests = 0;
+  const sharedPrefix = "x".repeat(80);
+  const provider = createOllamaDialogueProvider({
+    fetchImpl: async () => {
+      requests += 1;
+      throw new Error("fetch should not run");
+    }
+  });
+
+  await assert.rejects(
+    provider({
+      character: { name: "Mara", persona: "A cautious traveler" },
+      playerText: "What do you know?",
+      world: {
+        [`${sharedPrefix}-first`]: "First fact",
+        [`${sharedPrefix}-second`]: "Second fact"
+      }
+    }),
+    /world fact keys collide after normalization/u
+  );
+  assert.equal(requests, 0);
 });

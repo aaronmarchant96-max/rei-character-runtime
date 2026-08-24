@@ -18,12 +18,17 @@ function nanosecondsToMilliseconds(value) {
 }
 
 function normalizeWorldFacts(world) {
-  return Object.fromEntries(
-    Object.entries(world ?? {}).slice(0, 20).map(([key, value]) => [
-      String(key).slice(0, 80),
-      String(value).slice(0, MAX_CONTEXT_TEXT)
-    ])
-  );
+  const entries = [];
+  const normalizedKeys = new Set();
+  for (const [key, value] of Object.entries(world ?? {}).slice(0, 20)) {
+    const normalizedKey = String(key).slice(0, 80);
+    if (normalizedKeys.has(normalizedKey)) {
+      throw new TypeError(`world fact keys collide after normalization: ${normalizedKey}`);
+    }
+    normalizedKeys.add(normalizedKey);
+    entries.push([normalizedKey, String(value).slice(0, MAX_CONTEXT_TEXT)]);
+  }
+  return Object.fromEntries(entries);
 }
 
 function normalizeIdentityFacts(character) {

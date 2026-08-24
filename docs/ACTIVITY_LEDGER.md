@@ -10,7 +10,7 @@ the activity.
 | 2026-08-24 | Add system speech control | commit `f7ba349`; audible desktop run | Small local voice-adapter boundary and fallback | Baseline for future TTS comparisons | verified |
 | 2026-08-24 | Add Piper neural voice | commit `445d38e`; audible desktop run; model hashes | Higher-quality local CPU speech path | Same dialogue can be evaluated across voice backends | verified |
 | 2026-08-24 | Establish local dialogue baseline | Ollama receipt; EXP-004 | Structured CPU-local character dialogue with literal token and duration metrics | Dialogue providers can be compared behind one contract | measured, integration pending |
-| 2026-08-24 | Add grounding and retry gate | 15 tests; two EXP-004 live controls | Unsupported answers are corrected or replaced before TTS | Game adapters can rely on an explicit pre-voice policy | verified on two controls |
+| 2026-08-24 | Add grounding and retry gate | 16 tests; two EXP-004 live controls | Unsupported answers are corrected or replaced before TTS | Game adapters can rely on an explicit pre-voice policy | verified on two controls |
 | 2026-08-24 | Complete dynamic spoken turn | EXP-005 desktop receipts | Typed input reaches grounded local dialogue and audible neural speech | Same end-to-end contract can be placed behind a game bridge | verified on one live turn |
 
 ## Decision ledger
