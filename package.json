@@ -10,10 +10,11 @@
     "voice": "node src/cli.js --speak",
     "voice:neural": "node src/cli.js --speak --backend=piper",
     "npc:local": "node src/cli.js --dialogue=ollama --speak --backend=piper",
+    "target:listen": "node scripts/listen-oblivion-target.mjs",
     "bridge:fixture": "node scripts/write-bridge-response.mjs",
     "bridge:build": "bash scripts/build-xobse-plugin.sh",
     "test": "node --test",
-    "check": "node --check src/*.js && node --test"
+    "check": "node --check src/*.js && node --check scripts/listen-oblivion-target.mjs && node --test"
   },
   "engines": {
     "node": ">=20"

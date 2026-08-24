@@ -248,3 +248,36 @@ This verifies player-triggered selection of one live NPC/creature reference. It
 does not yet verify the NPC name, location, external publication of the selected
 reference, typed dialogue, subtitle output, voice attachment, or a complete
 conversation round trip.
+
+## EXP-010 — selected actor identity crossed into the external runtime
+
+- Date: 2026-08-24
+- Game/runtime: original Oblivion GOTY, Steam App ID `22330`, xOBSE `22.13`,
+  Proton Experimental `11.0-100`
+- Plugin SHA-256: `a01a2e4c1211c857123de7f4a25f0a885aac7fcdab747f70b1bc7f32d3075a35`
+- Activation: `npm run target:listen`, then aim in-game and tap `U`
+- Selected reference Form ID: `0004F9D3`
+- Actor kind: `creature`
+- Envelope size: 94 bytes
+- Envelope SHA-256: `57390bccc155a96f56cc3558e2eae221e633d7e4ffc042e1a1c5a8b8050e63fe`
+- Native result: `target-published-creature`
+- External result: the strict schema validator emitted `target-selected` with
+  the same Form ID and actor kind
+- Rejection result: `target-hotkey-rejected-non-actor` was recorded before the
+  accepted selection and did not publish a target
+- Test result immediately before installation: 22 passed, 0 failed
+- Side effects: no model calls, game actions, command registration, network
+  requests, or save reads/writes
+- Mode: DLL/envelope hashes, byte count, plugin events, and listener receipt
+  measured locally in one live run
+
+The native bridge writes a fixed four-field JSON envelope to a temporary file
+and replaces `target.json` with Windows write-through rename semantics. The
+external runtime accepts only schema version 1, game `oblivion-2009`, an
+eight-character uppercase hexadecimal Form ID, and actor kind `npc` or
+`creature`. Unknown, missing, malformed, ambiguous, and oversized values fail
+validation.
+
+This verifies the first game-to-runtime identity boundary. It does not yet
+verify the actor name, location, dialogue request, model response, subtitle,
+voice attachment, or a complete conversation round trip.

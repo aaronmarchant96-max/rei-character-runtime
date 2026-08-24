@@ -218,6 +218,60 @@ bool DisplayResponseWhenReady() {
   return true;
 }
 
+bool PublishTarget(UInt32 formId, const char* actorKind) {
+  char targetPath[MAX_PATH] = {};
+  char temporaryPath[MAX_PATH] = {};
+  if (!BuildPath(targetPath, sizeof(targetPath), "Data\\OBSE\\Plugins\\EchoForge\\target.json")
+      || !BuildPath(
+        temporaryPath,
+        sizeof(temporaryPath),
+        "Data\\OBSE\\Plugins\\EchoForge\\target.json.tmp"
+      )) {
+    AppendLog("target-path-too-long");
+    return false;
+  }
+
+  char envelope[192] = {};
+  const int written = std::snprintf(
+    envelope,
+    sizeof(envelope),
+    "{\"schemaVersion\":1,\"game\":\"oblivion-2009\","
+    "\"referenceFormId\":\"%08X\",\"actorKind\":\"%s\"}",
+    formId,
+    actorKind
+  );
+  if (written <= 0 || static_cast<std::size_t>(written) >= sizeof(envelope)) {
+    AppendLog("target-envelope-too-large");
+    return false;
+  }
+
+  FILE* file = std::fopen(temporaryPath, "wb");
+  if (!file) {
+    AppendLog("target-temporary-open-failed");
+    return false;
+  }
+  const std::size_t length = static_cast<std::size_t>(written);
+  const bool wrote = std::fwrite(envelope, 1, length, file) == length
+    && std::fflush(file) == 0;
+  const bool closed = std::fclose(file) == 0;
+  if (!wrote || !closed) {
+    DeleteFileA(temporaryPath);
+    AppendLog("target-temporary-write-failed");
+    return false;
+  }
+  if (!MoveFileExA(
+        temporaryPath,
+        targetPath,
+        MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+      )) {
+    DeleteFileA(temporaryPath);
+    AppendLog("target-atomic-replace-failed");
+    return false;
+  }
+  AppendLog(actorKind[0] == 'n' ? "target-published-npc" : "target-published-creature");
+  return true;
+}
+
 void* ReadPointerAt(void* base, std::size_t offset) {
   if (!base) return nullptr;
   return *reinterpret_cast<void**>(static_cast<std::uint8_t*>(base) + offset);
@@ -253,11 +307,21 @@ void DisplayTargetReceipt() {
   const UInt32 formId = *reinterpret_cast<UInt32*>(
     static_cast<std::uint8_t*>(crosshairReference) + kFormIdOffset
   );
+  const char* actorKind = formType == kNpcFormType ? "npc" : "creature";
+  if (!PublishTarget(formId, actorKind)) {
+    const bool ran = g_console->RunScriptLine2(
+      "MessageBoxEX \"EchoForge: Target export failed. Check bridge.log.\"",
+      nullptr,
+      true
+    );
+    AppendLog(ran ? "target-hotkey-export-failure-shown" : "target-hotkey-script-failed");
+    return;
+  }
   char script[160] = {};
   const int written = std::snprintf(
     script,
     sizeof(script),
-    "MessageBoxEX \"EchoForge target locked.%%rNPC/creature Form ID: %%x8\" %u",
+    "MessageBoxEX \"EchoForge target linked.%%rNPC/creature Form ID: %%x8\" %u",
     formId
   );
   if (written <= 0 || static_cast<std::size_t>(written) >= sizeof(script)) {

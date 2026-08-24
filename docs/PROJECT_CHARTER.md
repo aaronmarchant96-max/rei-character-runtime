@@ -21,10 +21,11 @@ This is a target, not a claim about the current build.
 Typed CLI input can reach either a deterministic provider or a local Ollama
 dialogue provider, pass through bounded fact and identity grounding, and
 produce a subtitle, routing receipt, TTS request, and audible local speech
-through Speech Dispatcher or Piper. The local verification suite passed 19
-tests on 2026-08-24. A minimal xOBSE adapter also displayed deterministic
-external text inside original Oblivion through a message box. NPC selection,
-in-game input, subtitle presentation, and voice attachment remain unverified.
+through Speech Dispatcher or Piper. The local verification suite passed 22
+tests on 2026-08-24. A minimal xOBSE adapter displayed deterministic external
+text inside original Oblivion, selected one crosshair actor with a single key,
+and atomically exported its validated Form ID to the external runtime. In-game
+text entry, subtitle presentation, and voice attachment remain unverified.
 
 ## Strategic role
 

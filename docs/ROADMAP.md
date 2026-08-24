@@ -47,13 +47,13 @@ plugin itself does not read or write save files.
 xOBSE prerequisite status: release `22.13` installed reversibly and verified by
 loader/runtime logs in EXP-007.
 
-Bridge status: partial acceptance in EXP-008 and EXP-009. A deterministic
+Bridge status: partial acceptance in EXP-008 through EXP-010. A deterministic
 external response crossed the file boundary and appeared in-game through
 `MessageBoxEX`. The plugin load, save event, delayed main-loop task, and script
 execution were logged. A player-selected NPC produced a visible Form-ID receipt
-after one `U` keypress. In-game text entry, external round-trip of the selected
-reference, and subtitle display remain open, so the milestone claim is not
-complete.
+after one `U` keypress. A later selected creature's exact Form ID crossed an
+atomic JSON boundary and was validated by the external listener. In-game text
+entry and subtitle display remain open, so the milestone claim is not complete.
 
 Claim: targeting one NPC and entering text can round-trip through an xOBSE game
 adapter and display the validated response as a subtitle without modifying a

@@ -16,7 +16,8 @@ routing receipt, and local audible speech. It also includes a first original-
 Oblivion xOBSE bridge: deterministic external text can cross an atomic file
 boundary and render as an in-game message box after a save loads. The player can
 also aim at an NPC or creature and tap `U` to display a bounded target receipt
-containing its reference Form ID. This is not yet in-game text entry, a
+containing its reference Form ID. The same ID is atomically exported to a
+validated external-runtime envelope. This is not yet in-game text entry, a
 subtitle, or attached character voice.
 The default demo remains deterministic and offline; the optional
 `--dialogue=ollama` workflow calls a local dialogue-model provider.
@@ -131,6 +132,20 @@ For the targeting proof, aim the crosshair at an NPC or creature and tap `U`
 once. `F10` is also accepted, but was not detected on the measured ThinkPad
 keyboard/Proton path. The plugin rejects empty and non-actor targets and never
 disables or consumes either key. See EXP-009.
+
+To see each selected identity arrive outside the game, start this before
+launching Oblivion:
+
+```bash
+npm run target:listen
+```
+
+The listener automatically uses the measured Flatpak Steam installation path.
+Set `ECHOFORGE_TARGET_PATH` or pass `--input=/absolute/path/target.json` for a
+different installation. Each accepted `U` press atomically replaces one JSON
+envelope containing only the game ID, reference Form ID, and actor kind. The
+listener validates all fields and emits a measured byte/hash receipt. See
+EXP-010.
 
 ## Architecture
 

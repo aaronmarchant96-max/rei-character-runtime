@@ -62,6 +62,7 @@ The first Oblivion adapter is intentionally narrow:
 ```text
 Node fixture -> atomic response.txt -> xOBSE plugin -> delayed MessageBoxEX
 player aims + taps U -> actor-only crosshair lookup -> Form-ID receipt
+                         -> atomic target.json -> validated external listener
 ```
 
 Verified in EXP-008:
@@ -81,9 +82,19 @@ The implementation routes missing and non-actor crosshair references to
 explanatory messages; those two rejection paths still require live acceptance
 tests.
 
+Verified in EXP-010:
+
+- The plugin atomically replaces one 256-byte-bounded target envelope.
+- The external runtime requires an exact schema, game ID, uppercase Form ID,
+  and `npc`/`creature` actor kind.
+- One selected creature arrived as Form ID `0004F9D3`; the listener recorded
+  the exact 94-byte payload and its SHA-256 digest.
+- A non-actor selection was rejected before any target file replacement.
+- A missing-crosshair rejection still requires a live acceptance test.
+
 The next adapter increments remain:
 
-1. Publish the selected reference and current location to the external runtime.
+1. Add the selected actor's current location to the bounded envelope.
 2. Add easy bounded in-game text entry.
 3. Send allow-listed facts to the runtime.
 4. Replace the proof message box with an NPC-associated subtitle.
