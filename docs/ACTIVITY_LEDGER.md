@@ -15,6 +15,7 @@ the activity.
 | 2026-08-24 | Capture clean Oblivion baseline | EXP-006 manifest, hashes, and generated configuration | Known Steam/Proton starting state with existing-save risk identified | Later adapter failures can be separated from installation drift | verified; save isolation pending |
 | 2026-08-24 | Install and verify xOBSE | EXP-007 archive, payload, loader, runtime logs, and hashes | Reversible script-extender entry point on Steam Proton | EchoForge can now target a measured plugin boundary | verified; no EchoForge plugin yet |
 | 2026-08-24 | Prove external text inside Oblivion | 19 tests; EXP-008; xOBSE and bridge logs; human visual confirmation | Atomic Node-to-xOBSE file contract and delayed in-game message display | Dialogue providers can target a measured game-side text boundary | verified proof path; NPC interaction pending |
+| 2026-08-24 | Map open-source influences | Primary repositories, license files, upstream documentation, and `OPEN_SOURCE_INFLUENCES.md` | Explicit reference, interface, process, tool, direct-dependency, and hold categories | Future reuse can begin from a recorded provenance and license gate | reviewed; not legal advice |
 
 ## Decision ledger
 
@@ -87,6 +88,16 @@ the activity.
   exposes no arbitrary command interface to a model or player.
 - Follow-up: replace the modal proof UI with a tested NPC-associated subtitle
   path rather than treating `MessageBoxEX` as the final experience.
+
+### ADR-009 — influence before dependency
+
+- Decision: record an external project's useful pattern, exact terms, and
+  intended integration category before importing its code or artifacts.
+- Why: public source does not automatically permit bundling, and engines,
+  models, datasets, voices, and game-derived records can carry different terms.
+- Rule: missing or ambiguous terms place the project on hold; the next bridge
+  experiment should use existing xOBSE primitives before adding a dependency.
+- Evidence: `docs/OPEN_SOURCE_INFLUENCES.md`, reviewed 2026-08-24.
 
 ## Unmeasured fields for future activities
 
