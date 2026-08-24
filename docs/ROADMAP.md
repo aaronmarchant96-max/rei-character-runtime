@@ -40,6 +40,9 @@ Prerequisite — clean Steam/Proton baseline:
 - Keep existing saves outside the experiment until the adapter proves it can
   operate without irreversible modification.
 
+Status: verified in EXP-006 on 2026-08-24. Steam Cloud restored 31 existing
+saves, so save isolation remains a required gate before adapter installation.
+
 Claim: targeting one NPC and entering text can round-trip through an xOBSE game
 adapter and display the validated response as a subtitle without modifying a
 save irreversibly.

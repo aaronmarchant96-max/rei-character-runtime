@@ -135,3 +135,30 @@ temporary foreground server and does not claim authenticated local API access.
 
 This establishes one complete typed-to-audible local turn. It does not establish
 acceptable gameplay latency, broad grounding quality, or game integration.
+
+## EXP-006 — clean original Oblivion launch baseline
+
+- Date: 2026-08-24
+- Game: The Elder Scrolls IV: Oblivion Game of the Year Edition (2009)
+- Steam App ID: `22330`
+- Steam build ID: `1510065`
+- Installed size reported by Steam: 5,987,389,233 bytes
+- Compatibility runtime: Proton Experimental `11.0-100`
+- First-launch result: main menu reached and game exited normally
+- Renderer: AMD Radeon Graphics through RADV RENOIR
+- Initial display configuration: fullscreen, 640×480
+- Generated files: `Oblivion.ini`, `RendererInfo.txt`, and `BlendSettings.ini`
+- `Oblivion.exe` SHA-256: `a8f313845c1545e9a60e1e995961eef4c033115da9443f6d756341df3c2b7dc6`
+- `OblivionLauncher.exe` SHA-256: `060ff1f2530f86991290c37c8d8ddb78cbd9e60433a00cbf4c4d3d7934844692`
+- `Oblivion.esm` SHA-256: `a26e21ea8c3041f8737ffb3a266129dedb7f8a88590625ecfecd5eb7f66b4a70`
+- `Oblivion.ini` SHA-256 after first launch: `4d848614db7ea8e9dfab53f7448af962ab9166462ab8d14795c145de7986d717`
+- `RendererInfo.txt` SHA-256: `856f9a5b05aa84fe3cb732a7596c730869b5c9e956e7fd8f5b34a00c754bb4db`
+- Existing saves: 31 `.ess` files restored into the prefix; none were opened,
+  copied, modified, or deleted during this measurement
+- Mode: Steam manifest, local file hashes, generated configuration, and runtime
+  files measured directly on the target laptop
+
+The executable, launcher, and master-file hashes were unchanged across the
+first launch. Before any adapter experiment, existing saves require an explicit
+isolation or backup procedure. This experiment verifies installation and launch
+only; it does not verify xOBSE or game integration.
