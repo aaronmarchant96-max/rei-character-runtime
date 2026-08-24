@@ -149,6 +149,8 @@ Planned adapters:
 - [Experiment log](docs/EXPERIMENT_LOG.md) — measured facts and observations
 - [Activity ledger](docs/ACTIVITY_LEDGER.md) — effort converted into capability
 - [Voice and rights](docs/VOICE_AND_RIGHTS.md) — licensing and consent boundaries
+- [Open-source influences](docs/OPEN_SOURCE_INFLUENCES.md) — reusable patterns,
+  license boundaries, and dependency adoption gates
 
 ## Boundaries
 
