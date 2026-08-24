@@ -342,3 +342,34 @@ test("Ollama prompt and validation share the same truncated fact key", async () 
   assert.equal(proposal.providerReceipt.attempts, 1);
   assert.equal(proposal.providerReceipt.groundingStatus, "passed");
 });
+
+test("Ollama accepts identity-backed answers using explicit identity fact keys", async () => {
+  let request;
+  const provider = createOllamaDialogueProvider({
+    fetchImpl: async (_url, options) => {
+      request = JSON.parse(options.body);
+      return {
+        ok: true,
+        json: async () => ({
+          message: { content: JSON.stringify({
+            speech: "I am Mara, a cautious traveler.",
+            actions: [],
+            usedFactKeys: ["identity.name", "identity.persona"],
+            answerMode: "known"
+          }) }
+        })
+      };
+    }
+  });
+
+  const proposal = await provider({
+    character: { name: "Mara", persona: "A cautious traveler" },
+    playerText: "Who are you?",
+    world: {}
+  });
+
+  assert.match(request.messages[0].content, /"identity\.name":"Mara"/u);
+  assert.match(request.messages[0].content, /"identity\.persona":"A cautious traveler"/u);
+  assert.equal(proposal.providerReceipt.attempts, 1);
+  assert.equal(proposal.providerReceipt.groundingStatus, "passed");
+});

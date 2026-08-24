@@ -26,12 +26,14 @@ function normalizeWorldFacts(world) {
   );
 }
 
-function buildSystemMessage(character, facts) {
-  const identity = {
-    name: boundedText(character.name, "character.name"),
-    persona: boundedText(character.persona || "A guarded traveler.", "character.persona")
+function normalizeIdentityFacts(character) {
+  return {
+    "identity.name": boundedText(character.name, "character.name"),
+    "identity.persona": boundedText(character.persona || "A guarded traveler.", "character.persona")
   };
+}
 
+function buildSystemMessage(identityFacts, worldFacts) {
   return [
     "Portray the supplied fictional character in first person.",
     "Use only supplied identity and world facts; say when something is unknown.",
@@ -40,8 +42,8 @@ function buildSystemMessage(character, facts) {
     "Cite only relevant supplied facts by their exact keys in usedFactKeys.",
     "If no supplied fact answers the question, use answerMode unknown, cite no keys, and plainly express uncertainty.",
     "Return speech, an empty actions array, usedFactKeys, and answerMode.",
-    `CHARACTER_IDENTITY=${JSON.stringify(identity)}`,
-    `ALLOW_LISTED_WORLD_FACTS=${JSON.stringify(facts)}`
+    `CHARACTER_IDENTITY_FACTS=${JSON.stringify(identityFacts)}`,
+    `ALLOW_LISTED_WORLD_FACTS=${JSON.stringify(worldFacts)}`
   ].join("\n");
 }
 
@@ -58,6 +60,17 @@ function findRelevantFactKeys(playerText, world) {
     const locationMatch = asksWhere && /location|place|cell/iu.test(key);
     return overlaps || locationMatch ? [key] : [];
   });
+}
+
+function findRelevantIdentityKeys(playerText) {
+  const keys = [];
+  if (/\b(who are you|what is your name|what's your name|your name|what are you called)\b/iu.test(playerText)) {
+    keys.push("identity.name");
+  }
+  if (/\b(who are you|what do you do|your role|about yourself)\b/iu.test(playerText)) {
+    keys.push("identity.persona");
+  }
+  return keys;
 }
 
 function countSentences(speech) {
@@ -125,8 +138,13 @@ export function createOllamaDialogueProvider({
   }
 
   return async ({ character, playerText, world }) => {
-    const facts = normalizeWorldFacts(world);
-    const relevantFactKeys = findRelevantFactKeys(playerText, facts);
+    const identityFacts = normalizeIdentityFacts(character);
+    const worldFacts = normalizeWorldFacts(world);
+    const relevantFactKeys = [...new Set([
+      ...findRelevantFactKeys(playerText, identityFacts),
+      ...findRelevantFactKeys(playerText, worldFacts),
+      ...findRelevantIdentityKeys(playerText)
+    ])];
     const receipts = [];
     const validationFailures = [];
     let correction = "";
@@ -152,7 +170,7 @@ export function createOllamaDialogueProvider({
           },
           options: { temperature: 0.4, num_predict: 120 },
           messages: [
-            { role: "system", content: buildSystemMessage(character, facts) },
+            { role: "system", content: buildSystemMessage(identityFacts, worldFacts) },
             { role: "user", content: `${boundedText(playerText, "playerText")}${correction}` }
           ]
         })
