@@ -14,8 +14,10 @@ The current prototype proves the game-independent conversation and voice
 boundary: typed input becomes a validated response envelope, an auditable
 routing receipt, and local audible speech. It also includes a first original-
 Oblivion xOBSE bridge: deterministic external text can cross an atomic file
-boundary and render as an in-game message box after a save loads. This is not
-yet NPC targeting, in-game text entry, a subtitle, or attached character voice.
+boundary and render as an in-game message box after a save loads. The player can
+also aim at an NPC or creature and tap `U` to display a bounded target receipt
+containing its reference Form ID. This is not yet in-game text entry, a
+subtitle, or attached character voice.
 The default demo remains deterministic and offline; the optional
 `--dialogue=ollama` workflow calls a local dialogue-model provider.
 
@@ -124,6 +126,11 @@ Install the resulting ignored `.local/xobse/EchoForgeBridge.dll` in
 characters, and displays the response through xOBSE's supported `MessageBoxEX`
 path. It registers no commands, performs no network requests or game actions,
 and does not read or write save files. See EXP-008 for the measured first run.
+
+For the targeting proof, aim the crosshair at an NPC or creature and tap `U`
+once. `F10` is also accepted, but was not detected on the measured ThinkPad
+keyboard/Proton path. The plugin rejects empty and non-actor targets and never
+disables or consumes either key. See EXP-009.
 
 ## Architecture
 

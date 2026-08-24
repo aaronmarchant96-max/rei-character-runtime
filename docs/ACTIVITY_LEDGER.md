@@ -15,6 +15,7 @@ the activity.
 | 2026-08-24 | Capture clean Oblivion baseline | EXP-006 manifest, hashes, and generated configuration | Known Steam/Proton starting state with existing-save risk identified | Later adapter failures can be separated from installation drift | verified; save isolation pending |
 | 2026-08-24 | Install and verify xOBSE | EXP-007 archive, payload, loader, runtime logs, and hashes | Reversible script-extender entry point on Steam Proton | EchoForge can now target a measured plugin boundary | verified; no EchoForge plugin yet |
 | 2026-08-24 | Prove external text inside Oblivion | 19 tests; EXP-008; xOBSE and bridge logs; human visual confirmation | Atomic Node-to-xOBSE file contract and delayed in-game message display | Dialogue providers can target a measured game-side text boundary | verified proof path; NPC interaction pending |
+| 2026-08-24 | Add one-key Oblivion character targeting | 19 tests; EXP-009; bridge log; human confirmation of visible ID | Edge-triggered actor-only crosshair selection with a Form-ID receipt | A future dialogue request can be bound to a player-selected character | verified with `U`; external round trip pending |
 
 ## Decision ledger
 

@@ -221,3 +221,30 @@ This verifies an external deterministic text-to-game display path. It does not
 verify NPC targeting, player input captured inside the game, model-generated
 dialogue in the game, subtitle presentation, voice playback, save independence
 across a corpus, or a complete round trip.
+
+## EXP-009 — one-key NPC targeting inside original Oblivion
+
+- Date: 2026-08-24
+- Game/runtime: original Oblivion GOTY, Steam App ID `22330`, xOBSE `22.13`,
+  Proton Experimental `11.0-100`
+- Plugin SHA-256: `392d0818e52b8128d78c9919498b3fd58bdd44939d62f388e122faf76c4a9c2b`
+- Activation: aim at an NPC or creature and tap `U`; `F10` remains an alternate
+- Input result: `target-hotkey-polling` confirmed the xOBSE main-loop input task
+- Target result: `target-hotkey-actor-receipt-ran` was recorded
+- Human observation: the project owner confirmed that the target locked and an
+  ID appeared in-game
+- Test result immediately before installation: 19 passed, 0 failed
+- Side effects: no commands registered, model calls made, actions executed, or
+  save data read/written
+- Mode: DLL hash, test count, and plugin events measured locally; visible target
+  receipt confirmed by one human-observed run
+
+The first attempt used only `F10`. The plugin loaded and registered its task,
+but no key event was recorded on the measured ThinkPad/Proton path. A rebuilt
+plugin retained `F10`, added the plain `U` key, and logged a one-time polling
+heartbeat. `U` produced the expected actor receipt.
+
+This verifies player-triggered selection of one live NPC/creature reference. It
+does not yet verify the NPC name, location, external publication of the selected
+reference, typed dialogue, subtitle output, voice attachment, or a complete
+conversation round trip.

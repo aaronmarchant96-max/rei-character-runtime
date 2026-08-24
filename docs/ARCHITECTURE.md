@@ -37,7 +37,10 @@ action is data; it is never proof that the action is permitted.
 - `src/cli.js` is the current input and diagnostic harness.
 - `native/xobse/echoforge_bridge.cpp` is a minimal original-Oblivion adapter. It
   reads the response after a successful save load and schedules an xOBSE
-  `MessageBoxEX` call on the game main loop.
+  `MessageBoxEX` call on the game main loop. It also edge-detects `U` or `F10`,
+  reads the crosshair reference from the version-pinned Oblivion 1.2.0416 HUD
+  layout, accepts only NPC/creature base-form types, and displays the reference
+  Form ID.
 - The test suite verifies routing, validation, action non-execution, voice
   command boundaries, and deterministic atomic bridge publication without
   requiring live audio or a game installation.
@@ -58,6 +61,7 @@ The first Oblivion adapter is intentionally narrow:
 
 ```text
 Node fixture -> atomic response.txt -> xOBSE plugin -> delayed MessageBoxEX
+player aims + taps U -> actor-only crosshair lookup -> Form-ID receipt
 ```
 
 Verified in EXP-008:
@@ -67,10 +71,20 @@ Verified in EXP-008:
 - The plugin reads no more than 240 bytes from one declared response file.
 - No plugin command, network request, model call, action, or save mutation exists.
 
+Verified in EXP-009:
+
+- The xOBSE main-loop task polls supported input without disabling game input.
+- One `U` keypress while aiming at an NPC produced a visible target receipt.
+- Targeting records identity only; it cannot invoke dialogue or mutate the game.
+
+The implementation routes missing and non-actor crosshair references to
+explanatory messages; those two rejection paths still require live acceptance
+tests.
+
 The next adapter increments remain:
 
-1. Detect whether the bridge is connected.
-2. Read the selected reference and current location.
+1. Publish the selected reference and current location to the external runtime.
+2. Add easy bounded in-game text entry.
 3. Send allow-listed facts to the runtime.
 4. Replace the proof message box with an NPC-associated subtitle.
 5. Play voice externally before attempting in-engine audio.
