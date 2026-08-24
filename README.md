@@ -1,4 +1,4 @@
-# REI Character Runtime
+# REI EchoForge
 
 An evidence-driven experiment in giving legacy-game characters contextual
 dialogue, bounded memory, and generated speech—without giving a language model
@@ -86,6 +86,23 @@ expose port `11434` or configure this prototype as a persistent service.
 
 The demo provider is deterministic and offline. That makes the contract
 testable before model, voice, and game integrations introduce nondeterminism.
+
+## Prepare original Oblivion
+
+The first game target is **The Elder Scrolls IV: Oblivion Game of the Year
+Edition (2009)** on Steam, App ID `22330`. It is the original release, not
+Oblivion Remastered.
+
+Before installing any script extender or mod:
+
+1. Install App ID `22330` through Steam.
+2. Launch it once and reach the main menu.
+3. Exit normally so Steam/Proton can create the game prefix and configuration.
+4. Inspect and record the clean installation before adding xOBSE.
+
+This preserves a reproducible baseline and separates Steam/Proton problems from
+EchoForge adapter problems. Do not point the runtime at saves or grant a model
+console access during this setup step.
 
 ## Architecture
 

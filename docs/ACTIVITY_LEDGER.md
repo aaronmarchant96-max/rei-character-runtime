@@ -61,6 +61,18 @@ the activity.
 - Limitation: lexical fact relevance is an initial control, not proof of semantic
   truth. A scenario corpus and stronger entailment evaluation remain required.
 
+### ADR-007 — EchoForge as a bounded REI proving ground
+
+- Decision: treat EchoForge as a focused game-runtime experiment while REI AI
+  remains the primary long-term system.
+- Why: Oblivion exercises routing, grounding, local inference, voice, latency,
+  receipts, and action boundaries in a concrete environment without requiring
+  game-specific architecture to enter the REI core.
+- Test: verify one original Oblivion NPC text-and-voice bridge, then record which
+  capabilities transfer back to REI and which remain adapter-specific.
+- Stop condition: do not generalize CARDO into a universal product workflow from
+  this single adapter result.
+
 ## Unmeasured fields for future activities
 
 - Human elapsed time
