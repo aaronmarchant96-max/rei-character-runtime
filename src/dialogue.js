@@ -17,17 +17,20 @@ function nanosecondsToMilliseconds(value) {
   return finiteNumber(value) / 1_000_000;
 }
 
-function buildSystemMessage(character, world) {
-  const identity = {
-    name: boundedText(character.name, "character.name"),
-    persona: boundedText(character.persona || "A guarded traveler.", "character.persona")
-  };
-  const facts = Object.fromEntries(
+function normalizeWorldFacts(world) {
+  return Object.fromEntries(
     Object.entries(world ?? {}).slice(0, 20).map(([key, value]) => [
       String(key).slice(0, 80),
       String(value).slice(0, MAX_CONTEXT_TEXT)
     ])
   );
+}
+
+function buildSystemMessage(character, facts) {
+  const identity = {
+    name: boundedText(character.name, "character.name"),
+    persona: boundedText(character.persona || "A guarded traveler.", "character.persona")
+  };
 
   return [
     "Portray the supplied fictional character in first person.",
@@ -122,7 +125,8 @@ export function createOllamaDialogueProvider({
   }
 
   return async ({ character, playerText, world }) => {
-    const relevantFactKeys = findRelevantFactKeys(playerText, world);
+    const facts = normalizeWorldFacts(world);
+    const relevantFactKeys = findRelevantFactKeys(playerText, facts);
     const receipts = [];
     const validationFailures = [];
     let correction = "";
@@ -148,7 +152,7 @@ export function createOllamaDialogueProvider({
           },
           options: { temperature: 0.4, num_predict: 120 },
           messages: [
-            { role: "system", content: buildSystemMessage(character, world) },
+            { role: "system", content: buildSystemMessage(character, facts) },
             { role: "user", content: `${boundedText(playerText, "playerText")}${correction}` }
           ]
         })

@@ -13,7 +13,8 @@ The intended player experience is simple:
 The current prototype proves the game-independent conversation and voice
 boundary: typed input becomes a validated response envelope, an auditable
 routing receipt, and local audible speech. It does **not** yet connect to
-Oblivion or call a dialogue-model provider.
+Oblivion. The default demo remains deterministic and offline; the optional
+`--dialogue=ollama` workflow calls a local dialogue-model provider.
 
 ## Run the vertical slice
 

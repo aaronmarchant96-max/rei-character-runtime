@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { chooseRoute, createCharacterRuntime } from "../src/runtime.js";
 import { createOllamaDialogueProvider } from "../src/dialogue.js";
 import { speakPiperTtsRequest, speakTtsRequest } from "../src/voice.js";
@@ -261,4 +262,83 @@ test("Ollama fails closed on invalid structured dialogue", async () => {
     }),
     /invalid structured dialogue/u
   );
+});
+
+test("CLI rejects unsupported dialogue modes instead of silently using demo", () => {
+  const result = spawnSync(
+    process.execPath,
+    ["src/cli.js", "--dialogue=ollmaa", "Hello"],
+    { cwd: process.cwd(), encoding: "utf8" }
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Unsupported dialogue mode: ollmaa/u);
+  assert.equal(result.stdout, "");
+});
+
+test("Ollama validation ignores a relevant-looking 21st fact omitted from the prompt", async () => {
+  let request;
+  const provider = createOllamaDialogueProvider({
+    fetchImpl: async (_url, options) => {
+      request = JSON.parse(options.body);
+      return {
+        ok: true,
+        json: async () => ({
+          message: { content: JSON.stringify({
+            speech: "I do not know anything certain about that.",
+            actions: [],
+            usedFactKeys: [],
+            answerMode: "unknown"
+          }) }
+        })
+      };
+    }
+  });
+  const world = Object.fromEntries([
+    ...Array.from({ length: 20 }, (_value, index) => [`fact${index}`, `value${index}`]),
+    ["dragonRumor", "A dragon sleeps nearby"]
+  ]);
+
+  const proposal = await provider({
+    character: { name: "Mara", persona: "A traveler" },
+    playerText: "What is the dragon rumor?",
+    world
+  });
+
+  assert.doesNotMatch(request.messages[0].content, /dragonRumor/u);
+  assert.equal(proposal.providerReceipt.attempts, 1);
+  assert.equal(proposal.providerReceipt.groundingStatus, "passed");
+});
+
+test("Ollama prompt and validation share the same truncated fact key", async () => {
+  let request;
+  const originalKey = `dragon-${"x".repeat(90)}`;
+  const normalizedKey = originalKey.slice(0, 80);
+  const provider = createOllamaDialogueProvider({
+    fetchImpl: async (_url, options) => {
+      request = JSON.parse(options.body);
+      return {
+        ok: true,
+        json: async () => ({
+          message: { content: JSON.stringify({
+            speech: "The dragon is recorded as sleeping.",
+            actions: [],
+            usedFactKeys: [normalizedKey],
+            answerMode: "known"
+          }) }
+        })
+      };
+    }
+  });
+
+  const proposal = await provider({
+    character: { name: "Mara", persona: "A traveler" },
+    playerText: "What do you know about the dragon?",
+    world: { [originalKey]: "The dragon is sleeping" }
+  });
+
+  assert.match(request.messages[0].content, new RegExp(normalizedKey, "u"));
+  assert.doesNotMatch(request.messages[0].content, new RegExp(originalKey, "u"));
+  assert.equal(proposal.providerReceipt.attempts, 1);
+  assert.equal(proposal.providerReceipt.groundingStatus, "passed");
 });

@@ -9,6 +9,7 @@ const backendArgument = args.find((argument) => argument.startsWith("--backend="
 const backend = backendArgument?.split("=", 2)[1] ?? "system";
 const dialogueArgument = args.find((argument) => argument.startsWith("--dialogue="));
 const dialogue = dialogueArgument?.split("=", 2)[1] ?? "demo";
+const supportedDialogueModes = new Set(["demo", "ollama"]);
 const playerText = args
   .filter((argument) => argument !== "--speak"
     && !argument.startsWith("--backend=")
@@ -16,7 +17,10 @@ const playerText = args
   .join(" ")
   .trim();
 
-if (!playerText) {
+if (!supportedDialogueModes.has(dialogue)) {
+  console.error(`Unsupported dialogue mode: ${dialogue || "(empty)"}. Use demo or ollama.`);
+  process.exitCode = 1;
+} else if (!playerText) {
   console.error('Usage: npm run demo -- "Your question"');
   process.exitCode = 1;
 } else {
