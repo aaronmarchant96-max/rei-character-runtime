@@ -281,3 +281,39 @@ validation.
 This verifies the first game-to-runtime identity boundary. It does not yet
 verify the actor name, location, dialogue request, model response, subtitle,
 voice attachment, or a complete conversation round trip.
+
+## EXP-011 — selected NPC bound to local dialogue and Piper playback
+
+- Date: 2026-08-24
+- Selected reference Form ID: `00028B74`
+- Actor kind: `npc`
+- Target envelope: 89 bytes; SHA-256
+  `aeffb2038c3a0ddbfa0bb2e0f381b6d9569fc0b272acccdde0eba56b20bda2e4`
+- Question: `Who are you?`
+- Runtime character ID: `oblivion-2009:00028B74`
+- Response: `I can't say that I've noticed anything certain about that.`
+- Route: `economy`; reason: `short-routine-input`
+- Dialogue provider/model: `ollama-local` / `qwen3:1.7b`
+- Input/output tokens: 426 / 142
+- Dialogue attempts: 2
+- Dialogue duration: 18,365.646535 ms
+- Runtime turn latency: 18,417.439125 ms
+- Grounding result: fallback after `unknown-cites-facts` and
+  `uncertainty-not-expressed` validation failures
+- Provider API cost: $0
+- Proposed/executed actions: 0 / 0
+- Voice backend/model: `piper-local` / `en_US-lessac-medium`
+- Voice status: `played`; latency: 5,368.534380000001 ms
+- Test result immediately before the live turn: 24 passed, 0 failed
+- Mode: target, dialogue, routing, grounding, and voice values copied literally
+  from the live measured receipts; audible human confirmation pending
+
+The grounding layer rejected two model attempts and supplied its known safe
+uncertainty fallback before voice playback. This is expected while the target
+contract contains only a Form ID and actor kind: no canonical NPC name,
+biography, location, or dialogue facts were invented.
+
+This verifies identity continuity from a live Oblivion selection through an
+external local-model and TTS turn. It does not verify that the player heard the
+audio, in-game text entry, an in-game subtitle, spatial NPC audio, lip sync, or
+a canonical game-character personality.

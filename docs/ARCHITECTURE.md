@@ -63,6 +63,7 @@ The first Oblivion adapter is intentionally narrow:
 Node fixture -> atomic response.txt -> xOBSE plugin -> delayed MessageBoxEX
 player aims + taps U -> actor-only crosshair lookup -> Form-ID receipt
                          -> atomic target.json -> validated external listener
+                         -> bounded runtime turn -> Ollama -> Piper desktop audio
 ```
 
 Verified in EXP-008:
@@ -92,13 +93,23 @@ Verified in EXP-010:
 - A non-actor selection was rejected before any target file replacement.
 - A missing-crosshair rejection still requires a live acceptance test.
 
+Verified in EXP-011:
+
+- The selected Form ID becomes the runtime `characterId`.
+- The same ID remains attached to both dialogue and Piper receipts.
+- Grounding validation remains active and can replace an invalid model answer
+  with the safe uncertainty fallback.
+- Proposed and executed action arrays remain empty.
+- Playback is external desktop audio; no spatial game-audio claim is made.
+
 The next adapter increments remain:
 
 1. Add the selected actor's current location to the bounded envelope.
 2. Add easy bounded in-game text entry.
 3. Send allow-listed facts to the runtime.
 4. Replace the proof message box with an NPC-associated subtitle.
-5. Play voice externally before attempting in-engine audio.
+5. Associate the external voice turn with the in-game NPC before attempting
+   spatial engine audio.
 
 Quest state mutation, inventory changes, spawning, combat control, arbitrary
 console commands, and save writes remain prohibited until separately designed

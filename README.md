@@ -147,6 +147,19 @@ envelope containing only the game ID, reference Form ID, and actor kind. The
 listener validates all fields and emits a measured byte/hash receipt. See
 EXP-010.
 
+With the local Ollama server running, ask the currently selected actor one
+bounded question and play the answer through Piper:
+
+```bash
+npm run npc:target -- "Who are you?"
+```
+
+The selected Form ID becomes the runtime character ID and remains attached to
+the dialogue and voice receipts. Until canonical game names and dialogue facts
+are imported, EchoForge uses an explicit generic actor label and the grounding
+gate may return a cautious uncertainty response. Audio currently plays through
+the computer, not from the NPC's in-game position. See EXP-011.
+
 ## Architecture
 
 ```text
