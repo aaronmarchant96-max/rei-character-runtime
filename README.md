@@ -10,11 +10,10 @@ The intended player experience is simple:
 2. Press a hotkey and type a question.
 3. Receive an in-character subtitle and spoken response.
 
-This first commit is deliberately smaller. It proves the game-independent
-conversation boundary: typed input becomes a validated response envelope, an
-auditable routing receipt, and a structured request for a future text-to-speech
-adapter. It does **not** yet connect to Oblivion, call an AI provider, or generate
-audio.
+The current prototype proves the game-independent conversation and voice
+boundary: typed input becomes a validated response envelope, an auditable
+routing receipt, and local audible speech. It does **not** yet connect to
+Oblivion or call a dialogue-model provider.
 
 ## Run the vertical slice
 
@@ -67,7 +66,14 @@ Planned adapters:
 - Local and hosted dialogue models selected by measurable cost/latency needs
 - Local speech recognition and consent-safe text-to-speech voices
 
-See [docs/ROADMAP.md](docs/ROADMAP.md) for the falsifiable milestones.
+## Project records
+
+- [Project charter](docs/PROJECT_CHARTER.md) — purpose, users, claims, and scope
+- [Architecture](docs/ARCHITECTURE.md) — trust boundaries and component map
+- [Roadmap](docs/ROADMAP.md) — falsifiable milestones
+- [Experiment log](docs/EXPERIMENT_LOG.md) — measured facts and observations
+- [Activity ledger](docs/ACTIVITY_LEDGER.md) — effort converted into capability
+- [Voice and rights](docs/VOICE_AND_RIGHTS.md) — licensing and consent boundaries
 
 ## Boundaries
 
