@@ -10,18 +10,41 @@ import {
 } from "../src/target.js";
 
 const validEnvelope = JSON.stringify({
-  schemaVersion: 1,
+  schemaVersion: 2,
   game: "oblivion-2009",
   referenceFormId: "001234AB",
-  actorKind: "npc"
+  actorKind: "npc",
+  displayName: "Baurus",
+  locationFormId: "0002C16E",
+  locationName: "Cloud Ruler Temple"
 });
 
 test("target envelope preserves one bounded Oblivion actor identity", () => {
   assert.deepEqual(parseTargetEnvelope(validEnvelope), {
+    schemaVersion: 2,
+    game: "oblivion-2009",
+    referenceFormId: "001234AB",
+    actorKind: "npc",
+    displayName: "Baurus",
+    locationFormId: "0002C16E",
+    locationName: "Cloud Ruler Temple"
+  });
+});
+
+test("target envelope retains strict version-one compatibility", () => {
+  assert.deepEqual(parseTargetEnvelope(JSON.stringify({
     schemaVersion: 1,
     game: "oblivion-2009",
     referenceFormId: "001234AB",
     actorKind: "npc"
+  })), {
+    schemaVersion: 1,
+    game: "oblivion-2009",
+    referenceFormId: "001234AB",
+    actorKind: "npc",
+    displayName: null,
+    locationFormId: null,
+    locationName: null
   });
 });
 
@@ -44,6 +67,18 @@ test("target envelope rejects malformed, ambiguous, and oversized input", () => 
       actorKind: "door"
     })),
     /npc or creature/u
+  );
+  assert.throws(
+    () => parseTargetEnvelope(JSON.stringify({
+      schemaVersion: 2,
+      game: "oblivion-2009",
+      referenceFormId: "001234AB",
+      actorKind: "npc",
+      displayName: "Baurus\nInjected",
+      locationFormId: "0002C16E",
+      locationName: "Cloud Ruler Temple"
+    })),
+    /displayName/u
   );
   assert.throws(
     () => parseTargetEnvelope(`${validEnvelope}${" ".repeat(MAX_TARGET_ENVELOPE_BYTES)}`),

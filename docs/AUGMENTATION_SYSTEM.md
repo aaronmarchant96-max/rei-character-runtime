@@ -44,6 +44,11 @@ spoken as NPC dialogue. This preserves immersion while making the model's
 epistemic boundary inspectable. A response cannot gain game authority by
 claiming that it has it.
 
+EXP-013 exercised the known path with live game-derived facts: the selected
+actor name became `identity.name`, the current cell/worldspace name became
+`game.locationName`, and the response cited those exact keys. Biography and
+canonical dialogue remained explicitly unknown.
+
 ## A, B, and C activity
 
 - **A activity — use the capability:** select an NPC, ask a question, receive a

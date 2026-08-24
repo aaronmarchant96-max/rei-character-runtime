@@ -5,10 +5,13 @@ import { runTargetConversation } from "../src/target-turn.js";
 test("selected Oblivion identity binds the same character to dialogue and voice", async () => {
   const calls = [];
   const target = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     game: "oblivion-2009",
     referenceFormId: "00028B74",
-    actorKind: "npc"
+    actorKind: "npc",
+    displayName: "Baurus",
+    locationFormId: "0002C16E",
+    locationName: "Cloud Ruler Temple"
   };
 
   const output = await runTargetConversation({
@@ -31,7 +34,9 @@ test("selected Oblivion identity binds the same character to dialogue and voice"
   });
 
   assert.equal(calls[0].request.character.id, "oblivion-2009:00028B74");
+  assert.equal(calls[0].request.character.name, "Baurus");
   assert.equal(calls[0].request.world["game.referenceFormId"], "00028B74");
+  assert.equal(calls[0].request.world["game.locationName"], "Cloud Ruler Temple");
   assert.deepEqual(calls[1].request, {
     characterId: "oblivion-2009:00028B74",
     text: "I am the person you selected."

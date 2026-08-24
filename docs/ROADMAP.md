@@ -84,11 +84,19 @@ not complete the milestone: playback remains desktop audio, but the player can
 now author multiple questions while the response envelope exposes grounding
 and preserves human control.
 
+EXP-013 verified the first contextual voice input: schema v2 exported `Nels the
+Naughty` and `Summitmist Manor` from the live game, and the grounded model
+response used both. Piper reported `played`, but audio remains external and was
+not human-confirmed for that run.
+
 ## Milestone 4 — memory and world state
 
 Claim: bounded retrieved memories and allow-listed game facts improve character
 consistency without increasing unsupported statements beyond the agreed
 threshold.
+
+Status: first allow-listed game facts verified in EXP-013. This does not yet
+measure memory or consistency across a corpus.
 
 ## Milestone 5 — transfer experiment
 

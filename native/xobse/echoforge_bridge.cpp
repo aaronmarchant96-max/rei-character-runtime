@@ -27,8 +27,20 @@ constexpr std::size_t kHudCrosshairReferenceOffset = 0x54;
 constexpr std::size_t kFormTypeOffset = 0x04;
 constexpr std::size_t kFormIdOffset = 0x0C;
 constexpr std::size_t kReferenceBaseFormOffset = 0x1C;
+constexpr std::size_t kReferenceParentCellOffset = 0x40;
+constexpr std::size_t kActorBaseFullNameDataOffset = 0xA4;
+constexpr std::size_t kActorBaseFullNameLengthOffset = 0xA8;
+constexpr std::size_t kCellFullNameDataOffset = 0x1C;
+constexpr std::size_t kCellFullNameLengthOffset = 0x20;
+constexpr std::size_t kCellWorldspaceOffset = 0x50;
+constexpr std::size_t kMaxGameTextBytes = 80;
 constexpr std::uint8_t kNpcFormType = 0x23;
 constexpr std::uint8_t kCreatureFormType = 0x24;
+
+struct BoundedGameText {
+  char value[kMaxGameTextBytes + 1];
+  bool present;
+};
 
 struct PluginInfo {
   UInt32 infoVersion;
@@ -218,7 +230,76 @@ bool DisplayResponseWhenReady() {
   return true;
 }
 
-bool PublishTarget(UInt32 formId, const char* actorKind) {
+BoundedGameText ReadGameText(void* object, std::size_t dataOffset, std::size_t lengthOffset) {
+  BoundedGameText result = {{}, false};
+  if (!object) return result;
+  const char* source = *reinterpret_cast<char**>(
+    static_cast<std::uint8_t*>(object) + dataOffset
+  );
+  const std::uint16_t sourceLength = *reinterpret_cast<std::uint16_t*>(
+    static_cast<std::uint8_t*>(object) + lengthOffset
+  );
+  if (!source || sourceLength == 0) return result;
+
+  const std::size_t boundedLength = sourceLength < kMaxGameTextBytes
+    ? sourceLength
+    : kMaxGameTextBytes;
+  std::size_t writeIndex = 0;
+  bool previousWasSpace = false;
+  for (std::size_t readIndex = 0; readIndex < boundedLength; ++readIndex) {
+    unsigned char character = static_cast<unsigned char>(source[readIndex]);
+    if (character == '\0') break;
+    if (character < 0x20 || character == 0x7F) character = ' ';
+    if (character >= 0x80) character = '?';
+    if (character == ' ') {
+      if (writeIndex == 0 || previousWasSpace) continue;
+      previousWasSpace = true;
+    } else {
+      previousWasSpace = false;
+    }
+    result.value[writeIndex++] = static_cast<char>(character);
+  }
+  while (writeIndex > 0 && result.value[writeIndex - 1] == ' ') --writeIndex;
+  result.value[writeIndex] = '\0';
+  result.present = writeIndex > 0;
+  return result;
+}
+
+bool EncodeNullableJsonText(
+  const BoundedGameText& text,
+  char* output,
+  std::size_t capacity
+) {
+  if (!text.present) {
+    return std::snprintf(output, capacity, "null") == 4;
+  }
+  std::size_t writeIndex = 0;
+  if (capacity < 3) return false;
+  output[writeIndex++] = '"';
+  for (std::size_t readIndex = 0; text.value[readIndex] != '\0'; ++readIndex) {
+    const char character = text.value[readIndex];
+    if (character == '"' || character == '\\') {
+      if (writeIndex + 2 >= capacity) return false;
+      output[writeIndex++] = '\\';
+    } else if (writeIndex + 1 >= capacity) {
+      return false;
+    }
+    output[writeIndex++] = character;
+  }
+  if (writeIndex + 2 > capacity) return false;
+  output[writeIndex++] = '"';
+  output[writeIndex] = '\0';
+  return true;
+}
+
+bool PublishTarget(
+  UInt32 formId,
+  const char* actorKind,
+  const BoundedGameText& displayName,
+  UInt32 locationFormId,
+  bool hasLocation,
+  const BoundedGameText& locationName
+) {
   char targetPath[MAX_PATH] = {};
   char temporaryPath[MAX_PATH] = {};
   if (!BuildPath(targetPath, sizeof(targetPath), "Data\\OBSE\\Plugins\\EchoForge\\target.json")
@@ -231,14 +312,35 @@ bool PublishTarget(UInt32 formId, const char* actorKind) {
     return false;
   }
 
-  char envelope[192] = {};
+  char displayNameJson[(kMaxGameTextBytes * 2) + 3] = {};
+  char locationNameJson[(kMaxGameTextBytes * 2) + 3] = {};
+  if (!EncodeNullableJsonText(displayName, displayNameJson, sizeof(displayNameJson))
+      || !EncodeNullableJsonText(locationName, locationNameJson, sizeof(locationNameJson))) {
+    AppendLog("target-name-encoding-failed");
+    return false;
+  }
+  char locationFormIdJson[16] = {};
+  const int locationWritten = hasLocation
+    ? std::snprintf(locationFormIdJson, sizeof(locationFormIdJson), "\"%08X\"", locationFormId)
+    : std::snprintf(locationFormIdJson, sizeof(locationFormIdJson), "null");
+  if (locationWritten <= 0
+      || static_cast<std::size_t>(locationWritten) >= sizeof(locationFormIdJson)) {
+    AppendLog("target-location-id-encoding-failed");
+    return false;
+  }
+
+  char envelope[512] = {};
   const int written = std::snprintf(
     envelope,
     sizeof(envelope),
-    "{\"schemaVersion\":1,\"game\":\"oblivion-2009\","
-    "\"referenceFormId\":\"%08X\",\"actorKind\":\"%s\"}",
+    "{\"schemaVersion\":2,\"game\":\"oblivion-2009\","
+    "\"referenceFormId\":\"%08X\",\"actorKind\":\"%s\","
+    "\"displayName\":%s,\"locationFormId\":%s,\"locationName\":%s}",
     formId,
-    actorKind
+    actorKind,
+    displayNameJson,
+    locationFormIdJson,
+    locationNameJson
   );
   if (written <= 0 || static_cast<std::size_t>(written) >= sizeof(envelope)) {
     AppendLog("target-envelope-too-large");
@@ -308,7 +410,36 @@ void DisplayTargetReceipt() {
     static_cast<std::uint8_t*>(crosshairReference) + kFormIdOffset
   );
   const char* actorKind = formType == kNpcFormType ? "npc" : "creature";
-  if (!PublishTarget(formId, actorKind)) {
+  const BoundedGameText displayName = ReadGameText(
+    baseForm,
+    kActorBaseFullNameDataOffset,
+    kActorBaseFullNameLengthOffset
+  );
+  void* parentCell = ReadPointerAt(crosshairReference, kReferenceParentCellOffset);
+  BoundedGameText locationName = ReadGameText(
+    parentCell,
+    kCellFullNameDataOffset,
+    kCellFullNameLengthOffset
+  );
+  if (!locationName.present) {
+    void* worldspace = ReadPointerAt(parentCell, kCellWorldspaceOffset);
+    locationName = ReadGameText(
+      worldspace,
+      kCellFullNameDataOffset,
+      kCellFullNameLengthOffset
+    );
+  }
+  const UInt32 locationFormId = parentCell
+    ? *reinterpret_cast<UInt32*>(static_cast<std::uint8_t*>(parentCell) + kFormIdOffset)
+    : 0;
+  if (!PublishTarget(
+        formId,
+        actorKind,
+        displayName,
+        locationFormId,
+        parentCell != nullptr,
+        locationName
+      )) {
     const bool ran = g_console->RunScriptLine2(
       "MessageBoxEX \"EchoForge: Target export failed. Check bridge.log.\"",
       nullptr,

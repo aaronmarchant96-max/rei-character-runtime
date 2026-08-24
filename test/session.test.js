@@ -10,10 +10,13 @@ import {
 } from "../src/session.js";
 
 const target = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   game: "oblivion-2009",
   referenceFormId: "00028B74",
-  actorKind: "npc"
+  actorKind: "npc",
+  displayName: "Baurus",
+  locationFormId: "0002C16E",
+  locationName: "Cloud Ruler Temple"
 };
 
 function validTurn() {
@@ -47,11 +50,12 @@ test("augmentation session makes known and unknown target context explicit", () 
     knownFacts: {
       game: "oblivion-2009",
       referenceFormId: "00028B74",
-      actorKind: "npc"
+      actorKind: "npc",
+      displayName: "Baurus",
+      locationFormId: "0002C16E",
+      locationName: "Cloud Ruler Temple"
     },
     unknownFacts: [
-      "canonicalName",
-      "currentLocation",
       "canonicalBiography",
       "canonicalDialogue"
     ]

@@ -16,9 +16,10 @@ routing receipt, and local audible speech. It also includes a first original-
 Oblivion xOBSE bridge: deterministic external text can cross an atomic file
 boundary and render as an in-game message box after a save loads. The player can
 also aim at an NPC or creature and tap `U` to display a bounded target receipt
-containing its reference Form ID. The same ID is atomically exported to a
-validated external-runtime envelope. This is not yet in-game text entry, a
-subtitle, or attached character voice.
+containing its reference Form ID. The same selection is atomically exported to
+a validated external-runtime envelope with its game-derived display name,
+current cell/worldspace name, and their Form IDs where available. This is not
+yet in-game text entry, a subtitle, or attached character voice.
 The default demo remains deterministic and offline; the optional
 `--dialogue=ollama` workflow calls a local dialogue-model provider.
 
@@ -143,9 +144,10 @@ npm run target:listen
 The listener automatically uses the measured Flatpak Steam installation path.
 Set `ECHOFORGE_TARGET_PATH` or pass `--input=/absolute/path/target.json` for a
 different installation. Each accepted `U` press atomically replaces one JSON
-envelope containing only the game ID, reference Form ID, and actor kind. The
-listener validates all fields and emits a measured byte/hash receipt. See
-EXP-010.
+envelope. Schema v2 adds bounded, nullable game-derived actor and location names
+plus the location Form ID; the reader remains strictly compatible with an
+existing schema-v1 file during upgrade. The listener validates all fields and
+emits a measured byte/hash receipt. See EXP-010 and EXP-013.
 
 With the local Ollama server running, ask the currently selected actor one
 bounded question and play the answer through Piper:
@@ -159,6 +161,11 @@ the dialogue and voice receipts. Until canonical game names and dialogue facts
 are imported, EchoForge uses an explicit generic actor label and the grounding
 gate may return a cautious uncertainty response. Audio currently plays through
 the computer, not from the NPC's in-game position. See EXP-011.
+
+With schema v2, game-derived target names and locations become allow-listed
+dialogue facts. In EXP-013, selecting `Nels the Naughty` inside `Summitmist
+Manor` produced a grounded response that used those exact facts without
+importing biography or canonical dialogue.
 
 For a repeatable human-controlled loop, use one command:
 

@@ -2,13 +2,6 @@ import { appendFile, mkdir } from "node:fs/promises";
 import { dirname, isAbsolute } from "node:path";
 import { parseTargetEnvelope } from "./target.js";
 
-const UNKNOWN_TARGET_FACTS = Object.freeze([
-  "canonicalName",
-  "currentLocation",
-  "canonicalBiography",
-  "canonicalDialogue"
-]);
-
 function normalizeQuestion(value) {
   if (typeof value !== "string" || !value.trim()) {
     throw new TypeError("question must be a non-empty string");
@@ -27,13 +20,21 @@ function normalizeTarget(target) {
 
 export function describeTargetKnowledge(target) {
   const normalized = normalizeTarget(target);
+  const knownFacts = {
+    game: normalized.game,
+    referenceFormId: normalized.referenceFormId,
+    actorKind: normalized.actorKind
+  };
+  const unknownFacts = [];
+  if (normalized.displayName) knownFacts.displayName = normalized.displayName;
+  else unknownFacts.push("canonicalName");
+  if (normalized.locationFormId) knownFacts.locationFormId = normalized.locationFormId;
+  if (normalized.locationName) knownFacts.locationName = normalized.locationName;
+  else unknownFacts.push("currentLocation");
+  unknownFacts.push("canonicalBiography", "canonicalDialogue");
   return {
-    knownFacts: {
-      game: normalized.game,
-      referenceFormId: normalized.referenceFormId,
-      actorKind: normalized.actorKind
-    },
-    unknownFacts: [...UNKNOWN_TARGET_FACTS]
+    knownFacts,
+    unknownFacts
   };
 }
 

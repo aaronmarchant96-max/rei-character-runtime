@@ -19,6 +19,7 @@ the activity.
 | 2026-08-24 | Export selected Oblivion actor identity | 22 tests; EXP-010; 94-byte live envelope and hash receipt | Atomic game-to-runtime target contract with strict external validation | Dialogue orchestration can receive the exact player-selected reference | verified for one creature; name/location pending |
 | 2026-08-24 | Bind selected NPC to local dialogue and voice | 24 tests; EXP-011; Ollama/Piper receipts; human audible confirmation | Exact game Form ID persists through routing, grounding, and playback | One selected actor can drive a safe external spoken turn | audible desktop playback verified; spatial attachment pending |
 | 2026-08-24 | Encode a supervised augmentation session | 27 tests; EXP-012 JSONL and live receipts | One command exposes knowns/unknowns, preserves player authority, validates dialogue, speaks it, and records evidence | Repeated actor questions can use the same inspectable workflow | verified on one external turn; in-game UI pending |
+| 2026-08-24 | Ground dialogue in live actor and location context | 28 tests; EXP-013; 184-byte schema-v2 envelope and spoken-turn receipts | Game-derived name and location cross the native boundary as allow-listed facts | Selected NPCs can answer identity/location questions without invented context | verified for one NPC/interior cell; broader corpus pending |
 
 ## Decision ledger
 
@@ -108,6 +109,18 @@ the activity.
   grounding and workflow improvements comparable rather than anecdotal.
 - Test: every recorded supervised turn must retain identity continuity, human
   control, zero action authority, and the response's fact-use/uncertainty state.
+
+### ADR-010 — version game-derived context explicitly
+
+- Decision: introduce target-envelope schema v2 for bounded nullable actor
+  display name, location Form ID, and cell/worldspace display name while
+  retaining strict schema-v1 read compatibility.
+- Why: stale target files must remain diagnosable during plugin upgrades, and
+  game-derived context must not be confused with generated biography.
+- Boundary: native strings are capped at 80 bytes, sanitized, JSON-escaped, and
+  validated again outside the game. Missing data remains `null`.
+- Test: reject unexpected fields, malformed Form IDs, control characters, and
+  envelopes over 512 UTF-8 bytes before dialogue.
 
 ## Unmeasured fields for future activities
 

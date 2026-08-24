@@ -364,3 +364,49 @@ human selects the actor and authors the question while the system supplies a
 grounded spoken response and inspectable support. It does not verify that audio
 was heard during this particular run, in-game text entry, subtitles, spatial
 audio, canonical character facts, memory, or game actions.
+
+## EXP-013 — live actor name and location ground the response
+
+- Date: 2026-08-24
+- Game/runtime: original Oblivion GOTY, Steam App ID `22330`, xOBSE `22.13`,
+  Proton Experimental `11.0-100`
+- Live plugin SHA-256: `bbf1c934f77dbb9e2492d6554d64583de86272959e222e8d5d0d51c161c62b87`
+- Activation: aim at the NPC and tap `U`, then run
+  `npm run oblivion:session`
+- Target schema version: 2
+- Selected actor: `Nels the Naughty`; Form ID `00028B76`; kind `npc`
+- Current location: `Summitmist Manor`; cell Form ID `00027D53`
+- Target envelope: 184 bytes; SHA-256
+  `a8300d368cb8ed3771f45640b2cd6842ab8696d47fcb15ec0cbe7963c9d78ec9`
+- Human-authored question: `Who are you, and where are we?`
+- Response: `I am Nels the Naughty, a player-selected NPC in the original
+  Oblivion. We are located at Summitmist Manor.`
+- Used fact keys: `identity.name`, `identity.persona`, `game.locationName`,
+  `game.locationFormId`
+- Augmentation result: `answerMode=known`, uncertainty none,
+  `humanControl=player-decides`, `actionAuthority=none`
+- Dialogue provider/model: `ollama-local` / `qwen3:1.7b`
+- Input/output tokens: 457 / 155
+- Dialogue attempts: 2
+- Dialogue duration: 27,083.453053 ms
+- Runtime turn latency: 27,104.828305000003 ms
+- Grounding result: passed after one `irrelevant-fact-citation` validation
+  failure; fallback not used
+- Provider API cost: $0
+- Proposed/executed actions: 0 / 0
+- Voice backend/model: `piper-local` / `en_US-lessac-medium`
+- Voice status: `played`; latency: 10,072.809524000004 ms
+- Final verification after source-format repair: 28 passed, 0 failed
+- Mode: native target values, byte/hash receipt, response, grounding, routing,
+  and voice values copied literally from live retained records
+
+The first selection after installation still emitted schema v1 because the
+previous DLL remained loaded in the running game. Fully exiting and relaunching
+Oblivion loaded schema v2; the next selection produced the enriched envelope.
+This is a native lifecycle requirement, not a schema fallback.
+
+The response demonstrates that actual game-derived identity and location can
+cross the xOBSE boundary and ground local dialogue. It does not establish
+canonical personality, biography, dialogue style, persistent memory, audible
+human confirmation for this run, in-game subtitles, spatial audio, lip sync,
+or game-action execution.

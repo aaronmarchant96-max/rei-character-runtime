@@ -67,6 +67,7 @@ The first Oblivion adapter is intentionally narrow:
 Node fixture -> atomic response.txt -> xOBSE plugin -> delayed MessageBoxEX
 player aims + taps U -> actor-only crosshair lookup -> Form-ID receipt
                          -> atomic target.json -> validated external listener
+                         -> bounded actor name + current cell/worldspace context
                          -> bounded runtime turn -> Ollama -> Piper desktop audio
 ```
 
@@ -114,13 +115,20 @@ Verified in EXP-012:
   uncertainty, `player-decides`, and `actionAuthority: none`.
 - The measured unknown answer cited no facts and proposed/executed no actions.
 
+Verified in EXP-013:
+
+- Target schema v2 carried the game-derived actor name, parent-cell Form ID,
+  and cell/worldspace display name through the strict external validator.
+- The actor name became an identity fact and the location became an
+  allow-listed world fact; the grounded response cited both.
+- Schema v1 remains accepted but normalizes the three new values to `null`.
+
 The next adapter increments remain:
 
-1. Add the selected actor's current location to the bounded envelope.
-2. Add easy bounded in-game text entry.
-3. Send allow-listed facts to the runtime.
-4. Replace the proof message box with an NPC-associated subtitle.
-5. Associate the external voice turn with the in-game NPC before attempting
+1. Add easy bounded in-game text entry.
+2. Add additional allow-listed actor/world facts behind explicit measurements.
+3. Replace the proof message box with an NPC-associated subtitle.
+4. Associate the external voice turn with the in-game NPC before attempting
    spatial engine audio.
 
 Quest state mutation, inventory changes, spawning, combat control, arbitrary
