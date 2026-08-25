@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
-import { createOllamaDialogueProvider } from "../src/dialogue.js";
+import { createRoutedOllamaDialogueProvider } from "../src/dialogue.js";
 import { readTargetEnvelope } from "../src/target.js";
 import { runTargetConversation } from "../src/target-turn.js";
 import { speakPiperTtsRequest } from "../src/voice.js";
@@ -29,7 +29,7 @@ if (!playerText) {
   const output = await runTargetConversation({
     target,
     playerText,
-    dialogueProvider: createOllamaDialogueProvider(),
+    dialogueProvider: createRoutedOllamaDialogueProvider(),
     speak: speakPiperTtsRequest
   });
   console.log(JSON.stringify({ targetReceipt, ...output }, null, 2));

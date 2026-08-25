@@ -39,6 +39,12 @@ augmentation:
   actionAuthority: none
 ```
 
+The response contract now supports `social`, `known`, and `unknown` modes.
+`social` permits generated greetings and casual character expression without
+misclassifying conversation as missing knowledge. `known` requires explicitly
+retrieved evidence keys. `unknown` retains explicit uncertainty. Deterministic
+retrieval chooses context; it does not write the NPC's answer.
+
 The augmentation channel is part of the actual response envelope. It is not
 spoken as NPC dialogue. This preserves immersion while making the model's
 epistemic boundary inspectable. A response cannot gain game authority by

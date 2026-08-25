@@ -35,8 +35,8 @@ function normalizeProviderReceipt(receipt) {
 function normalizeAugmentation(augmentation) {
   if (!augmentation || typeof augmentation !== "object" || Array.isArray(augmentation)) return null;
   const answerMode = augmentation.answerMode;
-  if (answerMode !== "known" && answerMode !== "unknown") {
-    throw new TypeError("proposal.augmentation.answerMode must be known or unknown");
+  if (!["known", "social", "unknown"].includes(answerMode)) {
+    throw new TypeError("proposal.augmentation.answerMode must be known, social, or unknown");
   }
   return {
     answerMode,

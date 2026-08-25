@@ -1,6 +1,11 @@
 const DEFAULT_ENDPOINT = "http://127.0.0.1:11434/api/chat";
 const DEFAULT_MODEL = "qwen3:1.7b";
 const MAX_CONTEXT_TEXT = 1_000;
+export const LOCAL_CHARACTER_MODELS = Object.freeze({
+  social: "qwen3:0.6b",
+  grounded: "qwen3:1.7b",
+  unknown: "qwen3:0.6b"
+});
 
 function boundedText(value, field) {
   const text = String(value ?? "").trim();
@@ -38,18 +43,27 @@ function normalizeIdentityFacts(character) {
   };
 }
 
-function buildSystemMessage(identityFacts, worldFacts) {
+function buildSystemMessage(identityFacts, worldFacts, socialAllowed, relevantFactKeys) {
   return [
     "Portray the supplied fictional character in first person.",
-    "Use only supplied identity and world facts; say when something is unknown.",
-    "Answer in no more than two short sentences.",
+    "Use the supplied persona for tone, temperament, and conversational style.",
+    "Use only supplied identity and world facts for factual claims; say when something is unknown.",
+    "Answer in no more than three short sentences.",
     "Never mention AI, prompts, models, JSON, or modern technology.",
     "Cite only relevant supplied facts by their exact keys in usedFactKeys.",
-    "If no supplied fact answers the question, use answerMode unknown, cite no keys, and plainly express uncertainty.",
+    socialAllowed
+      ? "This is casual social conversation: use answerMode social, cite no keys, and give one brief greeting or reply without volunteering biography, grief, factions, or world events."
+      : "For a supported factual answer use answerMode known; otherwise use answerMode unknown and plainly express uncertainty.",
     "Return speech, an empty actions array, usedFactKeys, and answerMode.",
+    `PERMITTED_USED_FACT_KEYS=${JSON.stringify(relevantFactKeys)}`,
     `CHARACTER_IDENTITY_FACTS=${JSON.stringify(identityFacts)}`,
     `ALLOW_LISTED_WORLD_FACTS=${JSON.stringify(worldFacts)}`
   ].join("\n");
+}
+
+export function isSocialInput(playerText) {
+  return /^\s*(hello|hi|hey|greetings|hail|good (?:morning|afternoon|evening)|how are you|how do you fare|nice to meet you|thank you|thanks|farewell|goodbye)\b/iu
+    .test(String(playerText));
 }
 
 function wordTokens(value) {
@@ -84,7 +98,7 @@ function countSentences(speech) {
   return speech.split(/[.!?]+(?:\s+|$)/u).map((part) => part.trim()).filter(Boolean).length;
 }
 
-function validateGroundedProposal(proposal, relevantFactKeys) {
+function validateGroundedProposal(proposal, relevantFactKeys, { socialAllowed = false } = {}) {
   const failures = [];
   const speech = String(proposal?.speech ?? "").trim();
   const actions = Array.isArray(proposal?.actions) ? proposal.actions : [];
@@ -96,15 +110,19 @@ function validateGroundedProposal(proposal, relevantFactKeys) {
 
   if (!speech) failures.push("speech-empty");
   if (speech.length > 280) failures.push("speech-too-long");
-  if (countSentences(speech) > 2) failures.push("sentence-limit");
+  if (countSentences(speech) > (socialAllowed ? 4 : 3)) failures.push("sentence-limit");
   if (actions.length > 0) failures.push("actions-not-empty");
   if (!usedFactKeys.every((key) => relevant.has(key))) failures.push("irrelevant-fact-citation");
-  if (answerMode !== "known" && answerMode !== "unknown") failures.push("answer-mode-invalid");
+  if (!["known", "social", "unknown"].includes(answerMode)) failures.push("answer-mode-invalid");
 
-  if (relevant.size === 0) {
+  if (socialAllowed && answerMode !== "social") failures.push("social-required");
+  if (!socialAllowed && answerMode === "social") failures.push("social-not-allowed");
+  if (relevant.size === 0 && !socialAllowed) {
     if (answerMode !== "unknown" || usedFactKeys.length > 0) failures.push("unknown-required");
   }
-  if (answerMode === "unknown") {
+  if (answerMode === "social") {
+    if (usedFactKeys.length > 0) failures.push("social-cites-facts");
+  } else if (answerMode === "unknown") {
     if (usedFactKeys.length > 0) failures.push("unknown-cites-facts");
     if (!/\b(don't know|do not know|haven't|have not|cannot|can't|uncertain|unsure|not noticed|can't say|cannot say)\b/iu.test(speech)) {
       failures.push("uncertainty-not-expressed");
@@ -148,20 +166,31 @@ function createAugmentation(answerMode, usedFactKeys = []) {
 export function createOllamaDialogueProvider({
   fetchImpl = globalThis.fetch,
   endpoint = DEFAULT_ENDPOINT,
-  model = DEFAULT_MODEL
+  model = DEFAULT_MODEL,
+  modelByRoute = {},
+  modelByMode = {}
 } = {}) {
   if (typeof fetchImpl !== "function") {
     throw new TypeError("fetchImpl must be a function");
   }
 
-  return async ({ character, playerText, world }) => {
+  return async ({ character, playerText, world, route }) => {
     const identityFacts = normalizeIdentityFacts(character);
     const worldFacts = normalizeWorldFacts(world);
+    const relevantWorldFactKeys = findRelevantFactKeys(playerText, worldFacts);
     const relevantFactKeys = [...new Set([
       ...findRelevantFactKeys(playerText, identityFacts),
-      ...findRelevantFactKeys(playerText, worldFacts),
+      ...relevantWorldFactKeys,
       ...findRelevantIdentityKeys(playerText)
     ])];
+    const retrievedWorldFacts = Object.fromEntries(
+      relevantWorldFactKeys.map((key) => [key, worldFacts[key]])
+    );
+    const socialAllowed = isSocialInput(playerText);
+    const dialogueMode = socialAllowed
+      ? "social"
+      : relevantFactKeys.length > 0 ? "grounded" : "unknown";
+    const selectedModel = modelByMode[dialogueMode] ?? modelByRoute[route] ?? model;
     const receipts = [];
     const validationFailures = [];
     let correction = "";
@@ -172,7 +201,7 @@ export function createOllamaDialogueProvider({
         headers: { "content-type": "application/json" },
         signal: AbortSignal.timeout(60_000),
         body: JSON.stringify({
-          model,
+          model: selectedModel,
           stream: false,
           think: false,
           format: {
@@ -181,13 +210,16 @@ export function createOllamaDialogueProvider({
               speech: { type: "string" },
               actions: { type: "array", items: { type: "object" } },
               usedFactKeys: { type: "array", items: { type: "string" } },
-              answerMode: { type: "string", enum: ["known", "unknown"] }
+              answerMode: { type: "string", enum: ["known", "social", "unknown"] }
             },
             required: ["speech", "actions", "usedFactKeys", "answerMode"]
           },
-          options: { temperature: 0.4, num_predict: 120 },
+          options: { temperature: 0.3, num_predict: 120 },
           messages: [
-            { role: "system", content: buildSystemMessage(identityFacts, worldFacts) },
+            {
+              role: "system",
+              content: buildSystemMessage(identityFacts, retrievedWorldFacts, socialAllowed, relevantFactKeys)
+            },
             { role: "user", content: `${boundedText(playerText, "playerText")}${correction}` }
           ]
         })
@@ -202,17 +234,19 @@ export function createOllamaDialogueProvider({
       let proposal;
       try {
         proposal = JSON.parse(payload?.message?.content ?? "");
-      } catch (error) {
-        throw new Error("Ollama returned invalid structured dialogue", { cause: error });
+      } catch {
+        validationFailures.push("structured-output-invalid");
+        correction = "\nCORRECTION_REQUIRED=[\"structured-output-invalid\"]. Return complete valid JSON only.";
+        continue;
       }
 
-      const validation = validateGroundedProposal(proposal, relevantFactKeys);
+      const validation = validateGroundedProposal(proposal, relevantFactKeys, { socialAllowed });
       if (validation.valid) {
         return {
           speech: proposal.speech,
           actions: [],
           augmentation: createAugmentation(proposal.answerMode, proposal.usedFactKeys),
-          providerReceipt: sumReceipts(receipts, model, {
+          providerReceipt: sumReceipts(receipts, selectedModel, {
             groundingStatus: "passed",
             fallbackUsed: false,
             validationFailures
@@ -225,14 +259,23 @@ export function createOllamaDialogueProvider({
     }
 
     return {
-      speech: "I can't say that I've noticed anything certain about that.",
+      speech: socialAllowed
+        ? "Well met. What brings you my way?"
+        : "I can't say that I've noticed anything certain about that.",
       actions: [],
-      augmentation: createAugmentation("unknown"),
-      providerReceipt: sumReceipts(receipts, model, {
+      augmentation: createAugmentation(socialAllowed ? "social" : "unknown"),
+      providerReceipt: sumReceipts(receipts, selectedModel, {
         groundingStatus: "fallback",
         fallbackUsed: true,
         validationFailures: [...new Set(validationFailures)]
       })
     };
   };
+}
+
+export function createRoutedOllamaDialogueProvider(options = {}) {
+  return createOllamaDialogueProvider({
+    ...options,
+    modelByMode: options.modelByMode ?? LOCAL_CHARACTER_MODELS
+  });
 }

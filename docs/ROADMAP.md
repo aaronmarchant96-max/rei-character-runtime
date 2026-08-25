@@ -128,6 +128,13 @@ EXP-016 adds deterministic retrieval for the five reviewed Nels facts. The same
 question now reaches a grounded answer in 0.29 ms before speech with no model
 call; unsupported questions still use Ollama.
 
+That deterministic response was retained as a diagnostic control, not the
+target character architecture. EXP-017 replaces canned profile speech with
+context selection plus model-generated wording, adds a non-factual `social`
+mode, and routes by dialogue need. Warm local controls measured 2.22 seconds
+for social generation on `qwen3:0.6b` and 5.22 seconds for a grounded daughter
+answer on `qwen3:1.7b`. Memory and relationship evolution remain pending.
+
 ## Milestone 5 — transfer experiment
 
 Adapt the runtime to Fallout 3 or New Vegas. Record runtime reuse, adapter-only

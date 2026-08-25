@@ -208,7 +208,8 @@ test("Ollama receives bounded character facts and returns literal metrics", asyn
 
   assert.equal(request.think, false);
   assert.equal(request.format.required.includes("speech"), true);
-  assert.match(request.messages[0].content, /Lantern Rest/u);
+  assert.doesNotMatch(request.messages[0].content, /Lantern Rest/u);
+  assert.match(request.messages[0].content, /I heard a wolf/u);
   assert.deepEqual(proposal, {
     speech: "I heard a wolf.",
     actions: [],
@@ -235,6 +236,46 @@ test("Ollama receives bounded character facts and returns literal metrics", asyn
       measurementMode: "measured"
     }
   });
+});
+
+test("social dialogue is generated in character without fabricated fact citations", async () => {
+  let request;
+  const provider = createOllamaDialogueProvider({
+    modelByMode: { social: "qwen3:0.6b" },
+    fetchImpl: async (_url, options) => {
+      request = JSON.parse(options.body);
+      return {
+        ok: true,
+        json: async () => ({
+          message: { content: JSON.stringify({
+            speech: "Well met, friend. Come, share a drink.",
+            actions: [],
+            usedFactKeys: [],
+            answerMode: "social"
+          }) },
+          prompt_eval_count: 50,
+          eval_count: 10,
+          total_duration: 500_000_000,
+          eval_duration: 250_000_000
+        })
+      };
+    }
+  });
+
+  const proposal = await provider({
+    character: { name: "Nels", persona: "A sociable Nord fond of tavern humor" },
+    playerText: "Hello",
+    world: { "profile.family": "His daughter Olga died." },
+    route: "economy"
+  });
+
+  assert.equal(request.model, "qwen3:0.6b");
+  assert.match(request.messages[0].content, /casual social conversation/u);
+  assert.doesNotMatch(request.messages[0].content, /daughter Olga/u);
+  assert.equal(proposal.augmentation.answerMode, "social");
+  assert.deepEqual(proposal.augmentation.usedFactKeys, []);
+  assert.equal(proposal.providerReceipt.model, "qwen3:0.6b");
+  assert.equal(proposal.providerReceipt.groundingStatus, "passed");
 });
 
 test("Ollama retries an ungrounded answer then falls back safely", async () => {
@@ -306,7 +347,7 @@ test("Ollama rejects unknown answers that cite facts", async () => {
   assert.equal(proposal.providerReceipt.validationFailures.includes("unknown-cites-facts"), true);
 });
 
-test("Ollama fails closed on invalid structured dialogue", async () => {
+test("Ollama retries invalid structured dialogue then fails closed", async () => {
   const provider = createOllamaDialogueProvider({
     fetchImpl: async () => ({
       ok: true,
@@ -314,14 +355,14 @@ test("Ollama fails closed on invalid structured dialogue", async () => {
     })
   });
 
-  await assert.rejects(
-    provider({
-      character: { name: "Mara", persona: "A traveler" },
-      playerText: "Hello",
-      world: {}
-    }),
-    /invalid structured dialogue/u
-  );
+  const proposal = await provider({
+    character: { name: "Mara", persona: "A traveler" },
+    playerText: "What color is the moon?",
+    world: {}
+  });
+  assert.equal(proposal.providerReceipt.attempts, 2);
+  assert.equal(proposal.providerReceipt.fallbackUsed, true);
+  assert.deepEqual(proposal.providerReceipt.validationFailures, ["structured-output-invalid"]);
 });
 
 test("CLI rejects unsupported dialogue modes instead of silently using demo", () => {

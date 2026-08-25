@@ -519,3 +519,50 @@ This repair does not weaken the uncertainty boundary. Only explicit reviewed
 triggers can use deterministic profile retrieval; other questions still reach
 Ollama and its grounding gate. Live in-game confirmation and human acceptance
 of the replacement voice remain outstanding.
+
+## EXP-017 — dynamic character generation with mode-based routing
+
+- Date: 2026-08-24
+- Runtime: local Ollama 0.32.15, CPU-only
+- Profile: exact Nels Form ID/name match
+- Retrieval behavior: selects fact keys only; contains no response text
+
+### Social control
+
+- Question: `hello`
+- Generated response: `Hello! I'm Nels the Naughty, a Nord who masks grief
+  with tavern humor and distrusts the Imperial Legion. I'm here to chat with
+  you.`
+- Answer mode: `social`; used fact keys: none
+- Model: `qwen3:0.6b`
+- Input/output tokens: 205 / 57
+- Attempts: 1; grounding passed; fallback not used
+- Model duration: 2,182.516997 ms
+- Runtime turn latency: 2,217.844684 ms
+- Provider API cost: $0
+
+### Grounded biography control
+
+- Question: `tell me about your daughter`
+- Retrieved keys: `profile.family` only
+- Generated response: `Olga was my daughter, but she died when bandits
+  attacked my village. I still remember the pain of that loss.`
+- Answer mode: `known`; used key: `profile.family`
+- Model: `qwen3:1.7b`
+- Input/output tokens: 214 / 56
+- Attempts: 1; grounding passed; fallback not used
+- Model duration: 5,212.811291 ms
+- Runtime turn latency: 5,217.308881000001 ms
+- Provider API cost: $0
+
+- Final verification: 44 tests passed; native key-map compile test passed
+- Voice in both controls: intentionally skipped to isolate dialogue timing
+- Mode: prompts, outputs, tokens, routing, durations, and tests measured locally
+
+An intermediate 0.6B grounded control failed after 4,937.507171 ms with
+`unknown-cites-facts` and `structured-output-invalid`, confirming that the
+smaller model is not reliable enough for the current grounded schema. This is
+why the live configuration uses it for social/unknown turns but retains 1.7B
+for retrieved biography. The social output is responsive but still less
+polished than desired; live player acceptance, memory, and relationship state
+remain unverified.

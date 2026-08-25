@@ -81,10 +81,10 @@ test("profiled Nels receives bounded facts and his configured prototype voice", 
       locationFormId: "00027D53",
       locationName: "Summitmist Manor"
     },
-    playerText: "What color is the moon?",
+    playerText: "Tell me about your daughter",
     dialogueProvider: async (request) => {
       dialogueRequest = request;
-      return { speech: "I come from a small village in Skyrim.", actions: [] };
+      return { speech: "I do not care to speak lightly of Olga.", actions: [] };
     },
     speak: async (request) => {
       voiceRequest = request;
@@ -100,16 +100,19 @@ test("profiled Nels receives bounded facts and his configured prototype voice", 
   });
 
   assert.match(dialogueRequest.character.persona, /Nord/u);
-  assert.equal(dialogueRequest.world["profile.origin"], "Nels comes from a small village in Skyrim.");
-  assert.equal(dialogueRequest.world["profile.ambition"].includes("Hoary Boar"), true);
+  assert.equal(dialogueRequest.world["profile.family"], "His daughter Olga died when bandits attacked his village.");
+  assert.equal(dialogueRequest.world["profile.origin"], undefined);
+  assert.equal(dialogueRequest.world["profile.ambition"], undefined);
   assert.equal(voiceRequest.voiceId, "en_GB-northern_english_male-medium");
   assert.equal(output.turn.profileReceipt.profileId, "oblivion:nels-the-naughty");
   assert.equal(output.turn.profileReceipt.voiceUsePolicy, "local-attribution-sharealike-prototype");
   assert.equal(output.turn.profileReceipt.voiceDatasetLicense, "CC-BY-SA-4.0");
   assert.equal(output.turn.profileReceipt.factKeys.length, 5);
+  assert.equal(output.turn.profileReceipt.retrievalIntent, "family-daughter");
+  assert.deepEqual(output.turn.profileReceipt.retrievedFactKeys, ["profile.family"]);
 });
 
-test("Nels daughter question uses deterministic profile retrieval instead of the model", async () => {
+test("Nels daughter question uses retrieved context with model-generated wording", async () => {
   let modelCalls = 0;
   let voiceRequest;
   const output = await runTargetConversation({
@@ -125,7 +128,7 @@ test("Nels daughter question uses deterministic profile retrieval instead of the
     playerText: "Tell me about your daughter",
     dialogueProvider: async () => {
       modelCalls += 1;
-      return { speech: "model should not run", actions: [] };
+      return { speech: "Olga's loss is a wound I still carry.", actions: [] };
     },
     speak: async (request) => {
       voiceRequest = request;
@@ -140,11 +143,10 @@ test("Nels daughter question uses deterministic profile retrieval instead of the
     }
   });
 
-  assert.equal(modelCalls, 0);
-  assert.equal(output.turn.speech, "My daughter Olga died when bandits attacked our village.");
-  assert.deepEqual(output.turn.augmentation.usedFactKeys, ["profile.family"]);
-  assert.equal(output.turn.dialogueReceipt.provider, "profile-retrieval");
-  assert.equal(output.turn.dialogueReceipt.inputTokens, 0);
+  assert.equal(modelCalls, 1);
+  assert.equal(output.turn.speech, "Olga's loss is a wound I still carry.");
+  assert.equal(output.turn.profileReceipt.retrievalIntent, "family-daughter");
+  assert.deepEqual(output.turn.profileReceipt.retrievedFactKeys, ["profile.family"]);
   assert.equal(voiceRequest.voiceId, "en_GB-northern_english_male-medium");
 });
 

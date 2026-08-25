@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
-import { createOllamaDialogueProvider } from "../src/dialogue.js";
+import { createRoutedOllamaDialogueProvider } from "../src/dialogue.js";
 import { appendSessionRecord, createSpokenTurnRecord, describeTargetKnowledge } from "../src/session.js";
 import { readTargetEnvelope } from "../src/target.js";
 import { runTargetConversation } from "../src/target-turn.js";
@@ -92,7 +92,7 @@ async function main() {
     ".local/sessions",
     `oblivion-${new Date().toISOString().replace(/[:.]/gu, "-")}.jsonl`
   );
-  const dialogueProvider = createOllamaDialogueProvider();
+  const dialogueProvider = createRoutedOllamaDialogueProvider();
   const terminal = createInterface({ input: process.stdin, output: process.stdout });
   let ownedOllama = null;
 

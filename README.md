@@ -58,8 +58,9 @@ a Bethesda performer.
 
 ### Optional local dynamic dialogue
 
-Install Ollama and its 1.4 GB `qwen3:1.7b` model locally. The measured 0.32.15
-CPU archive expands to approximately 2.1 GB:
+Install Ollama and the local `qwen3:0.6b` and `qwen3:1.7b` models. The measured
+0.32.15 CPU archive expands to approximately 2.1 GB; the model data remains in
+the ignored local directory:
 
 ```bash
 curl -fL https://ollama.com/download/ollama-linux-amd64.tar.zst \
@@ -77,6 +78,7 @@ npm run ollama:serve
 
 # Terminal 2
 .local/ollama/bin/ollama pull qwen3:1.7b
+.local/ollama/bin/ollama pull qwen3:0.6b
 npm run npc:local -- "Have you seen anything near the ruins?"
 ```
 
@@ -168,10 +170,11 @@ dialogue facts. In EXP-013, selecting `Nels the Naughty` inside `Summitmist
 Manor` produced a grounded response that used those exact facts without
 importing canonical dialogue. A strict profile overlay now matches only Nels's
 exact Form ID and game-derived name, adds five short sourced fact paraphrases,
-and selects `en_GB-northern_english_male-medium`. Exact reviewed questions use
-deterministic profile retrieval before Ollama, eliminating model latency and
-hallucination risk for those answers. Unknown questions still reach the model;
-unknown or mismatched actors retain the generic facts and default voice.
+and selects `en_GB-northern_english_male-medium`. Deterministic retrieval selects
+only the relevant reviewed facts; Ollama still generates the character's actual
+wording. Casual social turns route to `qwen3:0.6b`, grounded biography routes to
+`qwen3:1.7b`, and unknown factual questions retain the uncertainty gate.
+Unknown or mismatched actors keep the generic profile and default voice.
 
 For a repeatable human-controlled loop, use one command:
 

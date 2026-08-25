@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { writeBridgeResponse } from "../src/bridge.js";
-import { createOllamaDialogueProvider } from "../src/dialogue.js";
+import { createRoutedOllamaDialogueProvider } from "../src/dialogue.js";
 import { bindQuestionToTarget } from "../src/live-turn.js";
 import { readQuestionEnvelope } from "../src/question.js";
 import { appendSessionRecord, createSpokenTurnRecord } from "../src/session.js";
@@ -75,7 +75,7 @@ async function main() {
     ".local/sessions",
     `oblivion-live-${new Date().toISOString().replace(/[:.]/gu, "-")}.jsonl`
   );
-  const dialogueProvider = createOllamaDialogueProvider();
+  const dialogueProvider = createRoutedOllamaDialogueProvider();
   const ownedOllama = await ensureLocalOllama();
   let lastQuestionIdentity = await fileIdentity(questionPath);
 

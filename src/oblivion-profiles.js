@@ -1,5 +1,3 @@
-import { performance } from "node:perf_hooks";
-
 const PROFILE_CATALOG = {
   schemaVersion: 1,
   catalogId: "oblivion-profile-v1",
@@ -19,31 +17,26 @@ const PROFILE_CATALOG = {
         {
           intent: "relationship-dovesi",
           triggers: ["dovesi"],
-          speech: "Dovesi reminds me of my daughter, so I feel protective toward her.",
           factKeys: ["profile.relationship.dovesi"]
         },
         {
           intent: "family-daughter",
           triggers: ["daughter", "olga"],
-          speech: "My daughter Olga died when bandits attacked our village.",
           factKeys: ["profile.family"]
         },
         {
           intent: "imperial-legion",
           triggers: ["imperial legion", "legion"],
-          speech: "I resent the Imperial Legion because it failed to protect my village.",
           factKeys: ["profile.legion"]
         },
         {
           intent: "tavern-ambition",
           triggers: ["hoary boar", "tavern", "enough gold", "dream", "ambition"],
-          speech: "If I ever get enough gold, I want to open a tavern called The Hoary Boar.",
           factKeys: ["profile.ambition"]
         },
         {
           intent: "origin",
           triggers: ["where are you from", "where did you come from", "homeland", "origin", "skyrim"],
-          speech: "I come from a small village in Skyrim.",
           factKeys: ["profile.origin"]
         }
       ],
@@ -130,7 +123,7 @@ export function parseOblivionProfileCatalog(value) {
       if (!retrieval || typeof retrieval !== "object" || Array.isArray(retrieval)) {
         throw new TypeError(`profile retrieval ${index} must be an object`);
       }
-      requireExactKeys(retrieval, ["intent", "triggers", "speech", "factKeys"], `profile retrieval ${index}`);
+      requireExactKeys(retrieval, ["intent", "triggers", "factKeys"], `profile retrieval ${index}`);
       const intent = requireBoundedText(retrieval.intent, `profile retrieval ${index} intent`, 80);
       if (!Array.isArray(retrieval.triggers) || retrieval.triggers.length === 0 || retrieval.triggers.length > 8) {
         throw new TypeError(`profile retrieval ${index} triggers must contain between 1 and 8 entries`);
@@ -140,7 +133,6 @@ export function parseOblivionProfileCatalog(value) {
         if (normalized.length < 4) throw new TypeError("profile retrieval triggers must be at least 4 characters");
         return normalized;
       });
-      const speech = requireBoundedText(retrieval.speech, `profile retrieval ${index} speech`, 280);
       if (!Array.isArray(retrieval.factKeys) || retrieval.factKeys.length === 0) {
         throw new TypeError(`profile retrieval ${index} factKeys must be a non-empty array`);
       }
@@ -148,7 +140,7 @@ export function parseOblivionProfileCatalog(value) {
         if (!Object.hasOwn(facts, key)) throw new TypeError(`profile retrieval references unknown fact key: ${key}`);
         return key;
       });
-      return Object.freeze({ intent, triggers: Object.freeze(triggers), speech, factKeys: Object.freeze(factKeys) });
+      return Object.freeze({ intent, triggers: Object.freeze(triggers), factKeys: Object.freeze(factKeys) });
     });
 
     if (!candidate.voice || typeof candidate.voice !== "object" || Array.isArray(candidate.voice)) {
@@ -212,37 +204,11 @@ export function findProfileRetrieval(profile, playerText) {
     retrieval.triggers.some((trigger) => question.includes(trigger))) ?? null;
 }
 
-export function createProfileDialogueProvider({ profile, fallback, clock = performance }) {
-  if (typeof fallback !== "function") throw new TypeError("fallback must be a function");
-  return async (request) => {
-    const started = clock.now();
-    const retrieval = findProfileRetrieval(profile, request.playerText);
-    if (!retrieval) return fallback(request);
-    return {
-      speech: retrieval.speech,
-      actions: [],
-      augmentation: {
-        answerMode: "known",
-        usedFactKeys: [...retrieval.factKeys],
-        uncertainty: "none",
-        humanControl: "player-decides",
-        actionAuthority: "none"
-      },
-      providerReceipt: {
-        provider: "profile-retrieval",
-        model: "deterministic-v1",
-        inputTokens: 0,
-        outputTokens: 0,
-        totalDurationMs: Math.max(0, clock.now() - started),
-        loadDurationMs: 0,
-        generationDurationMs: 0,
-        providerApiCostUsd: 0,
-        attempts: 1,
-        groundingStatus: "passed",
-        fallbackUsed: false,
-        validationFailures: [],
-        measurementMode: "measured"
-      }
-    };
+export function selectProfileFacts(profile, playerText) {
+  const retrieval = findProfileRetrieval(profile, playerText);
+  if (!retrieval) return { retrieval: null, facts: {} };
+  return {
+    retrieval,
+    facts: Object.fromEntries(retrieval.factKeys.map((key) => [key, profile.facts[key]]))
   };
 }

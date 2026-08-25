@@ -35,9 +35,9 @@ action is data; it is never proof that the action is permitted.
 - `src/oblivion-profiles.js` validates a bounded, provenance-bearing overlay
   keyed by exact Form ID and game-derived name. It supplies paraphrased facts
   and an explicitly policy-labelled Piper model; a mismatch returns no overlay.
-  Reviewed trigger phrases resolve to fixed, cited first-person answers before
-  Ollama. Questions without an exact retrieval continue through the model and
-  grounding gate.
+  Reviewed trigger phrases select the smallest relevant fact subset; they do
+  not contain response scripts. Ollama generates the first-person wording and
+  must cite only the explicitly permitted retrieved keys.
 - `src/bridge.js` validates and atomically publishes a bounded text response for
   a game adapter.
 - `src/session.js` validates target knowledge, identity continuity, human
@@ -156,6 +156,20 @@ The next adapter increments remain:
 3. Replace the proof message box with an NPC-associated subtitle.
 4. Associate the external voice turn with the in-game NPC before attempting
    spatial engine audio.
+
+## Dynamic character modes
+
+The current dialogue boundary distinguishes three modes before generation:
+
+- `social`: greetings and casual exchanges use persona for style without
+  requiring a factual citation or inventing world events.
+- `grounded`: a deterministic retriever supplies only relevant reviewed facts;
+  generated speech must cite those exact keys.
+- `unknown`: unsupported factual questions must express uncertainty and cite
+  nothing.
+
+The live runner currently maps social and unknown turns to `qwen3:0.6b` and
+grounded turns to `qwen3:1.7b`. Model output remains untrusted in every mode.
 
 Quest state mutation, inventory changes, spawning, combat control, arbitrary
 console commands, and save writes remain prohibited until separately designed

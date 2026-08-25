@@ -1,8 +1,8 @@
 import { createCharacterRuntime } from "./runtime.js";
 import {
-  createProfileDialogueProvider,
   OBLIVION_PROFILE_CATALOG,
-  resolveOblivionProfile
+  resolveOblivionProfile,
+  selectProfileFacts
 } from "./oblivion-profiles.js";
 import { parseTargetEnvelope } from "./target.js";
 
@@ -33,10 +33,9 @@ export async function runTargetConversation({
   if (typeof speak !== "function") throw new TypeError("speak must be a function");
   const normalizedTarget = normalizeTarget(target);
   const profile = resolveOblivionProfile(normalizedTarget, profileCatalog);
+  const selectedProfile = selectProfileFacts(profile, playerText);
   const character = createTargetCharacter(normalizedTarget, profileCatalog);
-  const converse = createCharacterRuntime({
-    dialogueProvider: createProfileDialogueProvider({ profile, fallback: dialogueProvider })
-  });
+  const converse = createCharacterRuntime({ dialogueProvider });
   const world = {
     "game.referenceFormId": normalizedTarget.referenceFormId,
     "game.actorKind": normalizedTarget.actorKind
@@ -47,7 +46,7 @@ export async function runTargetConversation({
   if (normalizedTarget.locationName) {
     world["game.locationName"] = normalizedTarget.locationName;
   }
-  if (profile) Object.assign(world, profile.facts);
+  Object.assign(world, selectedProfile.facts);
   const turn = await converse({
     character,
     playerText,
@@ -59,6 +58,8 @@ export async function runTargetConversation({
         profileId: profile.profileId,
         match: "form-id-and-name",
         factKeys: Object.keys(profile.facts),
+        retrievalIntent: selectedProfile.retrieval?.intent ?? null,
+        retrievedFactKeys: selectedProfile.retrieval?.factKeys ?? [],
         provenanceMode: profile.provenance.mode,
         provenanceReviewedAt: profile.provenance.reviewedAt,
         voiceId: profile.voice.modelId,
@@ -71,6 +72,8 @@ export async function runTargetConversation({
         profileId: null,
         match: "generic-fallback",
         factKeys: [],
+        retrievalIntent: null,
+        retrievedFactKeys: [],
         provenanceMode: "none",
         provenanceReviewedAt: null,
         voiceId: null,
