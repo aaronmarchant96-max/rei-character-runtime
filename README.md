@@ -1,8 +1,6 @@
-# REI EchoForge
+# [EXPERIMENT] REI EchoForge
 
-An evidence-driven experiment in giving legacy-game characters contextual
-dialogue, bounded memory, and generated speech—without giving a language model
-unrestricted control of the game.
+An evidence-driven experiment in giving legacy-game characters contextual dialogue, bounded memory, and generated speech—without giving a language model unrestricted control of the game.
 
 The intended player experience is simple:
 
@@ -209,11 +207,15 @@ can enter a later prompt; canonical facts remain a separate evidence layer.
 
 ## Architecture
 
-```text
-Game adapter -> character context -> REI route -> dialogue provider
-     ^                                      |             |
-     |                                      v             v
-allow-listed actions <- validated envelope + receipt -> TTS adapter
+```mermaid
+flowchart TD
+    A[Game Adapter] -->|Provides| B[Character Context]
+    B --> C[REI Route]
+    C --> D[Dialogue Provider]
+    D --> E[TTS Adapter]
+    D --> F[Validated Envelope + Receipt]
+    F --> G[Allow-Listed Actions]
+    G --> A
 ```
 
 Planned adapters:
