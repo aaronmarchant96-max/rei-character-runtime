@@ -410,3 +410,38 @@ cross the xOBSE boundary and ground local dialogue. It does not establish
 canonical personality, biography, dialogue style, persistent memory, audible
 human confirmation for this run, in-game subtitles, spatial audio, lip sync,
 or game-action execution.
+
+## EXP-014 — live typed question returns spoken and in-game response
+
+- Date: 2026-08-24
+- Game/runtime: original Oblivion GOTY, Steam App ID `22330`, xOBSE `22.13`
+- Live plugin SHA-256:
+  `911cda6b0bfe18efa90d9537ea58ab6ac9cc656b458f2de467e954efe1c4e073`
+- Launcher: `npm run oblivion:live`
+- Activation: aim at the NPC, press `Y`, type in the native editor, press Enter
+- Selected actor: `Nels the Naughty`; Form ID `00028B76`
+- Current location: `Summitmist Manor`; cell Form ID `00027D53`
+- Question 1: `where are we ?`
+- Response 1: `We are in Summitmist Manor.`
+- Grounding 1: passed in one attempt using `game.locationFormId` and
+  `game.locationName`; 215 input tokens, 41 output tokens, 3,974.235579 ms
+- Voice 1: Piper `en_US-lessac-medium`, `played`, 4,343.401934999973 ms
+- Question 2: `whats your faverite thing about the 7`
+- Response 2: `I can't say that I've noticed anything certain about that.`
+- Grounding 2: safe fallback after two attempts; 477 input tokens, 99 output
+  tokens, 11,002.256669 ms
+- Voice 2: Piper `en_US-lessac-medium`, `played`, 5,694.692871000152 ms
+- Provider API cost: $0 for both turns
+- Proposed/executed actions: 0 / 0 for both turns
+- Final local verification: 34 passed, 0 failed; native scan-code compile test
+  passed; production DLL build passed
+- Human observation: the project owner confirmed that the response worked in
+  game, while noting that the voice did not match the NPC and available
+  knowledge remained limited
+
+Bridge logs retained `question-native-input-read`, `question-published`,
+`question-native-dialog-submitted`, and `response-live-messagebox-ran`. The
+JSONL record preserved exact target, question, response, grounding, routing,
+voice, byte-count, and hash receipts. This verifies the first complete live
+typed conversation loop. It does not verify an NPC-specific voice, spatial
+audio, canonical personality or lore, lip sync, persistent memory, or actions.

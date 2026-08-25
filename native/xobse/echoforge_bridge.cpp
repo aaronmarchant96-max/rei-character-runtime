@@ -4,6 +4,8 @@
 #include <cstdio>
 #include <cstring>
 
+#include "question_keys.h"
+
 namespace {
 
 using UInt32 = std::uint32_t;
@@ -22,6 +24,9 @@ constexpr std::size_t kMaxResponseBytes = 240;
 constexpr UInt32 kDisplayDelayFrames = 120;
 constexpr std::uint16_t kF10ScanCode = 0x44;
 constexpr std::uint16_t kUScanCode = 0x16;
+constexpr std::uint16_t kYScanCode = 0x15;
+constexpr std::uint16_t kEnterScanCode = 0x1C;
+constexpr std::uint16_t kEscapeScanCode = 0x01;
 constexpr std::uintptr_t kHudInfoMenuPointerAddress = 0x00B3B33C;
 constexpr std::size_t kHudCrosshairReferenceOffset = 0x54;
 constexpr std::size_t kFormTypeOffset = 0x04;
@@ -34,6 +39,7 @@ constexpr std::size_t kCellFullNameDataOffset = 0x1C;
 constexpr std::size_t kCellFullNameLengthOffset = 0x20;
 constexpr std::size_t kCellWorldspaceOffset = 0x50;
 constexpr std::size_t kMaxGameTextBytes = 80;
+constexpr std::size_t kMaxQuestionBytes = 240;
 constexpr std::uint8_t kNpcFormType = 0x23;
 constexpr std::uint8_t kCreatureFormType = 0x24;
 
@@ -116,8 +122,40 @@ void* g_displayTask = nullptr;
 void* g_targetHotkeyTask = nullptr;
 UInt32 g_displayDelayFrames = 0;
 bool g_activationWasPressed = false;
+bool g_talkWasPressed = false;
 bool g_inputPollingLogged = false;
 char g_oblivionRoot[MAX_PATH] = {};
+bool g_nativeQuestionActive = false;
+bool g_questionSubmitWasPressed = false;
+bool g_questionCancelWasPressed = false;
+UInt32 g_questionTargetFormId = 0;
+FILETIME g_lastResponseWriteTime = {};
+bool g_responseWatchInitialized = false;
+char g_capturedQuestion[kMaxQuestionBytes + 1] = {};
+std::size_t g_capturedQuestionLength = 0;
+bool g_questionKeyWasPressed[256] = {};
+
+void CaptureQuestionKeystrokes() {
+  const bool shifted = g_input->IsKeyPressedReal(0x2A)
+    || g_input->IsKeyPressedReal(0x36);
+  for (std::uint16_t scanCode = 0; scanCode < 256; ++scanCode) {
+    const bool pressed = g_input->IsKeyPressedReal(scanCode);
+    if (pressed && !g_questionKeyWasPressed[scanCode]) {
+      if (scanCode == 0x0E) {
+        if (g_capturedQuestionLength > 0) {
+          g_capturedQuestion[--g_capturedQuestionLength] = '\0';
+        }
+      } else {
+        const char character = echoforge::TranslateQuestionKey(scanCode, shifted);
+        if (character != '\0' && g_capturedQuestionLength < kMaxQuestionBytes) {
+          g_capturedQuestion[g_capturedQuestionLength++] = character;
+          g_capturedQuestion[g_capturedQuestionLength] = '\0';
+        }
+      }
+    }
+    g_questionKeyWasPressed[scanCode] = pressed;
+  }
+}
 
 bool BuildPath(char* destination, std::size_t capacity, const char* relativePath) {
   const int written = std::snprintf(destination, capacity, "%s%s", g_oblivionRoot, relativePath);
@@ -228,6 +266,30 @@ bool DisplayResponseWhenReady() {
   }
   g_displayTask = nullptr;
   return true;
+}
+
+void PollResponseFile() {
+  char path[MAX_PATH] = {};
+  if (!BuildPath(path, sizeof(path), "Data\\OBSE\\Plugins\\EchoForge\\response.txt")) return;
+  WIN32_FILE_ATTRIBUTE_DATA attributes = {};
+  if (!GetFileAttributesExA(path, GetFileExInfoStandard, &attributes)) return;
+  if (!g_responseWatchInitialized) {
+    g_lastResponseWriteTime = attributes.ftLastWriteTime;
+    g_responseWatchInitialized = true;
+    return;
+  }
+  if (CompareFileTime(&attributes.ftLastWriteTime, &g_lastResponseWriteTime) == 0) return;
+  g_lastResponseWriteTime = attributes.ftLastWriteTime;
+
+  char response[kMaxResponseBytes + 1] = {};
+  char script[(kMaxResponseBytes * 2) + 32] = {};
+  if (!ReadResponse(response, sizeof(response))
+      || !BuildMessageBoxScript(response, script, sizeof(script))) {
+    AppendLog("response-live-read-failed");
+    return;
+  }
+  const bool ran = g_console->RunScriptLine2(script, nullptr, true);
+  AppendLog(ran ? "response-live-messagebox-ran" : "response-live-messagebox-failed");
 }
 
 BoundedGameText ReadGameText(void* object, std::size_t dataOffset, std::size_t lengthOffset) {
@@ -379,6 +441,211 @@ void* ReadPointerAt(void* base, std::size_t offset) {
   return *reinterpret_cast<void**>(static_cast<std::uint8_t*>(base) + offset);
 }
 
+bool PublishQuestion(UInt32 formId, const char* input) {
+  char normalized[kMaxQuestionBytes + 1] = {};
+  std::size_t normalizedLength = 0;
+  bool previousWasSpace = false;
+  for (std::size_t index = 0; input[index] != '\0' && index < kMaxQuestionBytes; ++index) {
+    unsigned char character = static_cast<unsigned char>(input[index]);
+    if (character < 0x20 || character == 0x7F) character = ' ';
+    if (character >= 0x80) character = '?';
+    if (character == ' ') {
+      if (normalizedLength == 0 || previousWasSpace) continue;
+      previousWasSpace = true;
+    } else {
+      previousWasSpace = false;
+    }
+    normalized[normalizedLength++] = static_cast<char>(character);
+  }
+  while (normalizedLength > 0 && normalized[normalizedLength - 1] == ' ') {
+    --normalizedLength;
+  }
+  normalized[normalizedLength] = '\0';
+  if (normalizedLength == 0) {
+    AppendLog("question-empty");
+    return false;
+  }
+
+  char questionJson[(kMaxQuestionBytes * 2) + 3] = {};
+  std::size_t jsonIndex = 0;
+  questionJson[jsonIndex++] = '"';
+  for (std::size_t index = 0; normalized[index] != '\0'; ++index) {
+    const char character = normalized[index];
+    if (character == '"' || character == '\\') questionJson[jsonIndex++] = '\\';
+    questionJson[jsonIndex++] = character;
+  }
+  questionJson[jsonIndex++] = '"';
+  questionJson[jsonIndex] = '\0';
+
+  char questionPath[MAX_PATH] = {};
+  char temporaryPath[MAX_PATH] = {};
+  if (!BuildPath(questionPath, sizeof(questionPath), "Data\\OBSE\\Plugins\\EchoForge\\question.json")
+      || !BuildPath(
+        temporaryPath,
+        sizeof(temporaryPath),
+        "Data\\OBSE\\Plugins\\EchoForge\\question.json.tmp"
+      )) {
+    AppendLog("question-path-too-long");
+    return false;
+  }
+  char envelope[768] = {};
+  const int written = std::snprintf(
+    envelope,
+    sizeof(envelope),
+    "{\"schemaVersion\":1,\"game\":\"oblivion-2009\","
+    "\"targetReferenceFormId\":\"%08X\",\"question\":%s}",
+    formId,
+    questionJson
+  );
+  if (written <= 0 || static_cast<std::size_t>(written) >= sizeof(envelope)) {
+    AppendLog("question-envelope-too-large");
+    return false;
+  }
+  FILE* file = std::fopen(temporaryPath, "wb");
+  if (!file) {
+    AppendLog("question-temporary-open-failed");
+    return false;
+  }
+  const std::size_t length = static_cast<std::size_t>(written);
+  const bool wrote = std::fwrite(envelope, 1, length, file) == length
+    && std::fflush(file) == 0;
+  const bool closed = std::fclose(file) == 0;
+  if (!wrote || !closed) {
+    DeleteFileA(temporaryPath);
+    AppendLog("question-temporary-write-failed");
+    return false;
+  }
+  if (!MoveFileExA(
+        temporaryPath,
+        questionPath,
+        MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+      )) {
+    DeleteFileA(temporaryPath);
+    AppendLog("question-atomic-replace-failed");
+    return false;
+  }
+  AppendLog("question-published");
+  return true;
+}
+
+void CloseNativeQuestion(const char* logMessage) {
+  g_console->RunScriptLine2("CloseTextInput", nullptr, true);
+  g_nativeQuestionActive = false;
+  g_questionTargetFormId = 0;
+  g_questionSubmitWasPressed = false;
+  g_questionCancelWasPressed = false;
+  AppendLog(logMessage);
+}
+
+void SubmitNativeQuestion() {
+  char question[kMaxQuestionBytes + 1] = {};
+  const bool read = g_capturedQuestionLength > 0;
+  if (read) std::memcpy(question, g_capturedQuestion, sizeof(question));
+  const UInt32 formId = g_questionTargetFormId;
+  CloseNativeQuestion(read ? "question-native-input-read" : "question-native-input-read-failed");
+  if (read) {
+    AppendLog(PublishQuestion(formId, question)
+      ? "question-native-dialog-submitted"
+      : "question-native-dialog-publish-failed");
+  }
+}
+
+void PollNativeQuestion() {
+  if (!g_nativeQuestionActive) return;
+  if (!g_console->RunScriptLine2("UpdateTextInput", nullptr, true)) {
+    CloseNativeQuestion("question-native-update-failed");
+    return;
+  }
+  CaptureQuestionKeystrokes();
+  const bool submitPressed = g_input->IsKeyPressedReal(kEnterScanCode);
+  const bool cancelPressed = g_input->IsKeyPressedReal(kEscapeScanCode);
+  if (submitPressed && !g_questionSubmitWasPressed) {
+    SubmitNativeQuestion();
+    return;
+  }
+  if (cancelPressed && !g_questionCancelWasPressed) {
+    CloseNativeQuestion("question-native-dialog-cancelled");
+    return;
+  }
+  g_questionSubmitWasPressed = submitPressed;
+  g_questionCancelWasPressed = cancelPressed;
+}
+
+void CaptureTargetQuestion() {
+  if (g_nativeQuestionActive) return;
+  void* hudInfoMenu = *reinterpret_cast<void**>(kHudInfoMenuPointerAddress);
+  void* crosshairReference = ReadPointerAt(hudInfoMenu, kHudCrosshairReferenceOffset);
+  void* baseForm = ReadPointerAt(crosshairReference, kReferenceBaseFormOffset);
+  const std::uint8_t formType = baseForm
+    ? *(static_cast<std::uint8_t*>(baseForm) + kFormTypeOffset)
+    : 0;
+  if (!crosshairReference || (formType != kNpcFormType && formType != kCreatureFormType)) {
+    g_console->RunScriptLine2(
+      "MessageBoxEX \"EchoForge: Aim at an NPC or creature, then tap Y.\"",
+      nullptr,
+      true
+    );
+    AppendLog("question-hotkey-rejected-target");
+    return;
+  }
+  const UInt32 formId = *reinterpret_cast<UInt32*>(
+    static_cast<std::uint8_t*>(crosshairReference) + kFormIdOffset
+  );
+  const char* actorKind = formType == kNpcFormType ? "npc" : "creature";
+  const BoundedGameText displayName = ReadGameText(
+    baseForm,
+    kActorBaseFullNameDataOffset,
+    kActorBaseFullNameLengthOffset
+  );
+  void* parentCell = ReadPointerAt(crosshairReference, kReferenceParentCellOffset);
+  BoundedGameText locationName = ReadGameText(
+    parentCell,
+    kCellFullNameDataOffset,
+    kCellFullNameLengthOffset
+  );
+  if (!locationName.present) {
+    void* worldspace = ReadPointerAt(parentCell, kCellWorldspaceOffset);
+    locationName = ReadGameText(
+      worldspace,
+      kCellFullNameDataOffset,
+      kCellFullNameLengthOffset
+    );
+  }
+  const UInt32 locationFormId = parentCell
+    ? *reinterpret_cast<UInt32*>(static_cast<std::uint8_t*>(parentCell) + kFormIdOffset)
+    : 0;
+  if (!PublishTarget(
+        formId,
+        actorKind,
+        displayName,
+        locationFormId,
+        parentCell != nullptr,
+        locationName
+      )) {
+    AppendLog("question-target-publish-failed");
+    return;
+  }
+  const bool opened = g_console->RunScriptLine2(
+    "OpenTextInput \"EchoForge question: | Send\" 0 240",
+    nullptr,
+    true
+  );
+  if (!opened) {
+    AppendLog("question-native-open-failed");
+    return;
+  }
+  g_questionTargetFormId = formId;
+  g_capturedQuestion[0] = '\0';
+  g_capturedQuestionLength = 0;
+  for (std::uint16_t scanCode = 0; scanCode < 256; ++scanCode) {
+    g_questionKeyWasPressed[scanCode] = g_input->IsKeyPressedReal(scanCode);
+  }
+  g_nativeQuestionActive = true;
+  g_questionSubmitWasPressed = true;
+  g_questionCancelWasPressed = false;
+  AppendLog("question-native-dialog-opened");
+}
+
 void DisplayTargetReceipt() {
   void* hudInfoMenu = *reinterpret_cast<void**>(kHudInfoMenuPointerAddress);
   void* crosshairReference = ReadPointerAt(hudInfoMenu, kHudCrosshairReferenceOffset);
@@ -468,10 +735,18 @@ bool PollTargetHotkey() {
     AppendLog("target-hotkey-polling");
     g_inputPollingLogged = true;
   }
+  if (g_nativeQuestionActive) {
+    PollNativeQuestion();
+    return false;
+  }
+  PollResponseFile();
   const bool pressed = g_input->IsKeyPressedReal(kF10ScanCode)
     || g_input->IsKeyPressedReal(kUScanCode);
   if (pressed && !g_activationWasPressed) DisplayTargetReceipt();
   g_activationWasPressed = pressed;
+  const bool talkPressed = g_input->IsKeyPressedReal(kYScanCode);
+  if (talkPressed && !g_talkWasPressed) CaptureTargetQuestion();
+  g_talkWasPressed = talkPressed;
   return false;
 }
 
@@ -482,7 +757,7 @@ void HandleObseMessage(MessagingInterface::Message* message) {
     if (!g_targetHotkeyTask || !g_tasks->IsTaskPresentRemovable(g_targetHotkeyTask)) {
       g_targetHotkeyTask = g_tasks->EnqueueTaskRemovable(PollTargetHotkey);
       AppendLog(g_targetHotkeyTask
-        ? "target-hotkey-enabled-f10-or-u"
+        ? "target-hotkey-enabled-f10-or-u-talk-y"
         : "target-hotkey-enable-failed");
     }
     return;

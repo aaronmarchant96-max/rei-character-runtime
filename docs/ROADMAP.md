@@ -47,13 +47,16 @@ plugin itself does not read or write save files.
 xOBSE prerequisite status: release `22.13` installed reversibly and verified by
 loader/runtime logs in EXP-007.
 
-Bridge status: partial acceptance in EXP-008 through EXP-010. A deterministic
+Bridge status: accepted in EXP-014 after partial proofs in EXP-008 through
+EXP-013. A deterministic
 external response crossed the file boundary and appeared in-game through
 `MessageBoxEX`. The plugin load, save event, delayed main-loop task, and script
 execution were logged. A player-selected NPC produced a visible Form-ID receipt
 after one `U` keypress. A later selected creature's exact Form ID crossed an
 atomic JSON boundary and was validated by the external listener. In-game text
-entry and subtitle display remain open, so the milestone claim is not complete.
+entry, exact target binding, external processing, and return display completed a
+human-confirmed round trip. The current display is a message box rather than an
+NPC-attached subtitle.
 
 Claim: targeting one NPC and entering text can round-trip through an xOBSE game
 adapter and display the validated response as a subtitle without modifying a
@@ -89,6 +92,11 @@ Naughty` and `Summitmist Manor` from the live game, and the grounded model
 response used both. Piper reported `played`, but audio remains external and was
 not human-confirmed for that run.
 
+EXP-014 verified two questions authored through the in-game `Y` text box. Piper
+playback and the returned in-game response were human-confirmed. Voice remains
+one generic desktop model rather than NPC-specific or spatial audio, so this
+milestone remains partial.
+
 ## Milestone 4 — memory and world state
 
 Claim: bounded retrieved memories and allow-listed game facts improve character
@@ -96,7 +104,9 @@ consistency without increasing unsupported statements beyond the agreed
 threshold.
 
 Status: first allow-listed game facts verified in EXP-013. This does not yet
-measure memory or consistency across a corpus.
+measure memory or consistency across a corpus. EXP-014 demonstrated the current
+boundary clearly: location was answered from exported facts, while an unsupported
+preference question fell back rather than inventing a personality.
 
 ## Milestone 5 — transfer experiment
 

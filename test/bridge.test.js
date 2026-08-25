@@ -41,3 +41,20 @@ test("bridge response is published atomically with a measured receipt", async ()
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("Oblivion bridge uses xOBSE-native text input instead of an OS window", async () => {
+  const source = await readFile("native/xobse/echoforge_bridge.cpp", "utf8");
+
+  assert.equal(source.includes('OpenTextInput \\"EchoForge question:'), true);
+  assert.match(source, /RunScriptLine2\("UpdateTextInput"/u);
+  assert.match(source, /CaptureQuestionKeystrokes\(\)/u);
+  assert.match(source, /TranslateQuestionKey/u);
+  assert.match(source, /g_questionKeyWasPressed/u);
+  assert.doesNotMatch(source, /GetInputText|EchoForgeCaptureQuestion/u);
+  assert.doesNotMatch(source, /PrintToFile/u);
+  assert.match(source, /RunScriptLine2\("CloseTextInput"/u);
+  assert.match(source, /PollResponseFile\(\)/u);
+  assert.match(source, /response-live-messagebox-ran/u);
+  assert.match(source, /question-target-publish-failed/u);
+  assert.doesNotMatch(source, /CreateWindowExA|QuestionWindowProcedure/u);
+});

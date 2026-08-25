@@ -39,12 +39,18 @@ action is data; it is never proof that the action is permitted.
 - `src/cli.js` is the current input and diagnostic harness.
 - `scripts/run-oblivion-session.mjs` supervises a player-authored sequence of
   selected-target turns and owns only the local model process it starts.
+- `scripts/run-oblivion-live.mjs` watches atomic in-game question envelopes,
+  requires exact target identity continuity, runs Ollama and Piper, publishes
+  the response, and appends local turn evidence.
 - `native/xobse/echoforge_bridge.cpp` is a minimal original-Oblivion adapter. It
-  reads the response after a successful save load and schedules an xOBSE
-  `MessageBoxEX` call on the game main loop. It also edge-detects `U` or `F10`,
+  watches fresh responses and invokes xOBSE `MessageBoxEX` on the game main
+  loop. It also edge-detects `U` or `F10`,
   reads the crosshair reference from the version-pinned Oblivion 1.2.0416 HUD
   layout, accepts only NPC/creature base-form types, and displays the reference
   Form ID.
+  Pressing `Y` opens xOBSE's native text editor while the bridge captures a
+  bounded US-keyboard DirectInput stream, atomically publishes the question,
+  and silently refreshes the aimed actor envelope.
 - The test suite verifies routing, validation, action non-execution, voice
   command boundaries, and deterministic atomic bridge publication without
   requiring live audio or a game installation.
@@ -69,6 +75,9 @@ player aims + taps U -> actor-only crosshair lookup -> Form-ID receipt
                          -> atomic target.json -> validated external listener
                          -> bounded actor name + current cell/worldspace context
                          -> bounded runtime turn -> Ollama -> Piper desktop audio
+player aims + taps Y -> native editor + bounded raw keys -> question.json
+                      -> exact identity check -> Ollama -> Piper + response.txt
+                      -> fresh-response watch -> in-game MessageBoxEX
 ```
 
 Verified in EXP-008:
@@ -123,10 +132,20 @@ Verified in EXP-013:
   allow-listed world fact; the grounded response cited both.
 - Schema v1 remains accepted but normalizes the three new values to `null`.
 
+Verified in EXP-014:
+
+- Two player-authored questions crossed the live in-game input boundary.
+- Exact Form ID `00028B76` remained attached to target, dialogue, voice, and
+  response receipts.
+- A known location answer passed grounding in one attempt; an unsupported
+  preference answer failed closed to explicit uncertainty.
+- The project owner confirmed the response worked in game and identified the
+  generic voice and sparse knowledge as the next limitations.
+
 The next adapter increments remain:
 
-1. Add easy bounded in-game text entry.
-2. Add additional allow-listed actor/world facts behind explicit measurements.
+1. Add additional allow-listed actor/world facts behind explicit measurements.
+2. Add an explicit rights-safe NPC voice-selection registry.
 3. Replace the proof message box with an NPC-associated subtitle.
 4. Associate the external voice turn with the in-game NPC before attempting
    spatial engine audio.

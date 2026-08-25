@@ -20,6 +20,7 @@ the activity.
 | 2026-08-24 | Bind selected NPC to local dialogue and voice | 24 tests; EXP-011; Ollama/Piper receipts; human audible confirmation | Exact game Form ID persists through routing, grounding, and playback | One selected actor can drive a safe external spoken turn | audible desktop playback verified; spatial attachment pending |
 | 2026-08-24 | Encode a supervised augmentation session | 27 tests; EXP-012 JSONL and live receipts | One command exposes knowns/unknowns, preserves player authority, validates dialogue, speaks it, and records evidence | Repeated actor questions can use the same inspectable workflow | verified on one external turn; in-game UI pending |
 | 2026-08-24 | Ground dialogue in live actor and location context | 28 tests; EXP-013; 184-byte schema-v2 envelope and spoken-turn receipts | Game-derived name and location cross the native boundary as allow-listed facts | Selected NPCs can answer identity/location questions without invented context | verified for one NPC/interior cell; broader corpus pending |
+| 2026-08-24 | Complete the first live Oblivion conversation loop | 34 tests; native key-map compile test; EXP-014; bridge and JSONL receipts; human confirmation | One `Y` press now connects aimed actor, typed question, local grounded dialogue, Piper speech, and returned in-game text | Same evidence-bearing loop can now host voice-selection and knowledge experiments | verified for two questions; generic voice and sparse facts remain |
 
 ## Decision ledger
 

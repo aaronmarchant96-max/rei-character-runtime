@@ -10,16 +10,13 @@ The intended player experience is simple:
 2. Press a hotkey and type a question.
 3. Receive an in-character subtitle and spoken response.
 
-The current prototype proves the game-independent conversation and voice
-boundary: typed input becomes a validated response envelope, an auditable
-routing receipt, and local audible speech. It also includes a first original-
-Oblivion xOBSE bridge: deterministic external text can cross an atomic file
-boundary and render as an in-game message box after a save loads. The player can
-also aim at an NPC or creature and tap `U` to display a bounded target receipt
-containing its reference Form ID. The same selection is atomically exported to
-a validated external-runtime envelope with its game-derived display name,
-current cell/worldspace name, and their Form IDs where available. This is not
-yet in-game text entry, a subtitle, or attached character voice.
+The current prototype proves a complete first original-Oblivion conversation
+loop. The player can aim at an NPC or creature, press `Y`, type a bounded
+question in game, and press Enter. The xOBSE bridge exports the exact target and
+question; the external runtime validates identity, routes to local Ollama,
+grounds the answer, speaks it through Piper, records measured receipts, and
+returns the response to an in-game message box. Audio is still desktop playback
+through one generic Piper voice, not an NPC-specific or spatial game voice.
 The default demo remains deterministic and offline; the optional
 `--dialogue=ollama` workflow calls a local dialogue-model provider.
 
@@ -182,6 +179,17 @@ human control, and no model action authority. Commands are `/retarget`,
 `/facts`, and `/quit`. See EXP-012 and the
 [augmentation design](docs/AUGMENTATION_SYSTEM.md).
 
+For the live in-game loop, start this before launching Oblivion:
+
+```bash
+npm run oblivion:live
+```
+
+Aim at an NPC or creature, press `Y`, type the question, and press Enter. The
+runtime starts or reuses local Ollama, requires the question Form ID to match the
+freshly exported target, speaks the validated response through Piper, atomically
+publishes it back to the plugin, and retains a local JSONL evidence record.
+
 ## Architecture
 
 ```text
@@ -218,5 +226,6 @@ Planned adapters:
 
 ## Status
 
-Experimental pre-alpha. The current code is a contract harness plus a minimal
-proof-of-path xOBSE plugin, not a complete NPC conversation mod.
+Experimental pre-alpha. One live typed conversation loop is verified in original
+Oblivion. NPC-specific voice selection, canonical personality/lore retrieval,
+spatial audio, lip synchronization, memory, and actions remain incomplete.

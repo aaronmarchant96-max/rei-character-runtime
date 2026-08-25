@@ -12,11 +12,13 @@
     "npc:local": "node src/cli.js --dialogue=ollama --speak --backend=piper",
     "npc:target": "node scripts/talk-to-oblivion-target.mjs",
     "oblivion:session": "node scripts/run-oblivion-session.mjs",
+    "oblivion:live": "node scripts/run-oblivion-live.mjs",
     "target:listen": "node scripts/listen-oblivion-target.mjs",
+    "question:listen": "node scripts/listen-oblivion-question.mjs",
     "bridge:fixture": "node scripts/write-bridge-response.mjs",
     "bridge:build": "bash scripts/build-xobse-plugin.sh",
     "test": "node --test",
-    "check": "node --check src/*.js && node --check scripts/listen-oblivion-target.mjs && node --check scripts/talk-to-oblivion-target.mjs && node --check scripts/run-oblivion-session.mjs && node --test"
+    "check": "node --check src/*.js && node --check scripts/*.mjs && bash scripts/test-native-keymap.sh && node --test"
   },
   "engines": {
     "node": ">=20"
