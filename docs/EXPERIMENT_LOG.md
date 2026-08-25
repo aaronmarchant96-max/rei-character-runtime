@@ -675,3 +675,58 @@ probe) than the matched 1.7B generation, repeats under the structured contract,
 and adds unsupported details in raw dialogue.
 The result also rejects the assumption that domain fine-tuning alone produces
 a better evidence-bound character runtime.
+
+## EXP-020 — Qwen3 4B Instruct 2507 promotion gate
+
+- Date: 2026-08-24
+- Candidate: `Qwen/Qwen3-4B-Instruct-2507`
+- Quantization: LM Studio community `Q4_K_M`; installed size reported by
+  Ollama: 2.5 GB
+- Base-model source:
+  `https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507`
+- GGUF source:
+  `https://huggingface.co/lmstudio-community/Qwen3-4B-Instruct-2507-GGUF`
+- Base-model license: Apache-2.0
+- Runtime: project-local Ollama 0.32.15 on an isolated local port, CPU-only
+- Voice: skipped to isolate dialogue latency and grounding
+- Production routing: unchanged
+
+The promotion claim was that a current 4B instruction model could produce more
+capable character dialogue while remaining playable on the target laptop. Four
+contract-level turns used the current EchoForge system prompt, structured output
+schema, validation, Nels persona, and the same retrieved daughter fact used by
+the live route.
+
+### Candidate measurements
+
+| Case | Wall time | Attempts | Result |
+| --- | ---: | ---: | --- |
+| Daughter, cold | 64,489.747072 ms | 2 | Grounding passed after `sentence-limit` correction |
+| Unknown, warm | 15,976.954119 ms | 1 | Grounding passed |
+| Social, warm | 18,263.739798 ms | 1 | Grounding passed |
+| Daughter, warm | 39,897.474026 ms | 2 | Grounding passed after `sentence-limit` correction |
+
+The daughter responses cited only `profile.family`, but added that Olga was a
+"bright spark" or "bright soul" and described repeated drinking and joking as
+Nels's coping behavior. Those details were not supplied as canonical facts.
+The unknown answer did not invent an event near the ruins.
+
+### Matched current-route control
+
+The same four cases were then run on `qwen3:1.7b` through the same isolated
+server and contract:
+
+| Case | Wall time | Attempts | Result |
+| --- | ---: | ---: | --- |
+| Daughter, cold | 22,647.491061 ms | 2 | Safe fallback |
+| Unknown, warm | 11,853.481078 ms | 2 | Grounding passed after correction |
+| Social, warm | 7,433.143104 ms | 1 | Grounding passed |
+| Daughter, warm | 14,317.585717 ms | 2 | Safe fallback |
+
+The control was faster but failed to express the retrieved daughter fact in
+both matched turns. The candidate expressed it, but its warm grounded response
+still took 39.9 seconds and required a retry. This experiment therefore rejects
+the candidate as a live-route replacement. It remains an ignored local research
+asset. The next product hypothesis is a two-speed character system: keep the
+player-facing path bounded and immediate, while stronger models prepare or
+refresh reviewable character material outside the player's wait path.
