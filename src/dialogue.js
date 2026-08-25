@@ -43,27 +43,65 @@ function normalizeIdentityFacts(character) {
   };
 }
 
-function buildSystemMessage(identityFacts, worldFacts, socialAllowed, relevantFactKeys) {
+function buildSystemMessage(identityFacts, worldFacts, socialAllowed, relevantFactKeys, conversationContext) {
   return [
     "Portray the supplied fictional character in first person.",
     "Use the supplied persona for tone, temperament, and conversational style.",
     "Use only supplied identity and world facts for factual claims; say when something is unknown.",
+    "You may express emotions consistent with the persona and supplied facts, but do not invent new people, events, traits, relationships, or repeated habits.",
+    "Answer the current question directly instead of repeating the entire previous response.",
     "Answer in no more than three short sentences.",
     "Never mention AI, prompts, models, JSON, or modern technology.",
     "Cite only relevant supplied facts by their exact keys in usedFactKeys.",
+    "Conversation memory is prior player/NPC dialogue, not canonical evidence. Use it only for continuity; never turn an unsupported earlier claim into a world fact.",
+    "Use relationship familiarity only to adjust warmth and recognition. Never announce its label or turn count.",
     socialAllowed
       ? "This is casual social conversation: use answerMode social, cite no keys, and give one brief greeting or reply without volunteering biography, grief, factions, or world events."
       : "For a supported factual answer use answerMode known; otherwise use answerMode unknown and plainly express uncertainty.",
     "Return speech, an empty actions array, usedFactKeys, and answerMode.",
     `PERMITTED_USED_FACT_KEYS=${JSON.stringify(relevantFactKeys)}`,
     `CHARACTER_IDENTITY_FACTS=${JSON.stringify(identityFacts)}`,
-    `ALLOW_LISTED_WORLD_FACTS=${JSON.stringify(worldFacts)}`
+    `ALLOW_LISTED_WORLD_FACTS=${JSON.stringify(worldFacts)}`,
+    `BOUNDED_CONVERSATION_MEMORY=${JSON.stringify(conversationContext.turns)}`,
+    `RELATIONSHIP_STATE=${JSON.stringify(conversationContext.relationship)}`
   ].join("\n");
 }
 
 export function isSocialInput(playerText) {
   return /^\s*(hello|hi|hey|greetings|hail|good (?:morning|afternoon|evening)|how are you|how do you fare|nice to meet you|thank you|thanks|farewell|goodbye)\b/iu
     .test(String(playerText));
+}
+
+function isContinuityInput(playerText) {
+  return /\b(remember|earlier|before|again|we spoke|you said|last time|know me|met me|that|this|it)\b/iu
+    .test(String(playerText));
+}
+
+function normalizeConversationContext(value) {
+  const turns = Array.isArray(value?.turns)
+    ? value.turns.slice(-4).map((turn) => ({
+        turnId: String(turn?.turnId ?? "").slice(0, 32),
+        playerText: String(turn?.playerText ?? "").slice(0, 1_000),
+        npcText: String(turn?.npcText ?? "").slice(0, 280),
+        answerMode: String(turn?.answerMode ?? "unknown").slice(0, 16),
+        usedFactKeys: Array.isArray(turn?.usedFactKeys)
+          ? turn.usedFactKeys.map(String).slice(0, 12)
+          : []
+      }))
+    : [];
+  const totalCharacters = turns.reduce(
+    (total, turn) => total + turn.playerText.length + turn.npcText.length,
+    0
+  );
+  if (totalCharacters > 1_600) throw new TypeError("conversation context exceeds 1600 characters");
+  const turnCount = Math.max(0, Number(value?.relationship?.turnCount) || 0);
+  const familiarity = ["stranger", "met", "acquaintance", "familiar"].includes(value?.relationship?.familiarity)
+    ? value.relationship.familiarity
+    : "stranger";
+  return Object.freeze({
+    turns: Object.freeze(turns),
+    relationship: Object.freeze({ turnCount, familiarity })
+  });
 }
 
 function wordTokens(value) {
@@ -174,10 +212,24 @@ export function createOllamaDialogueProvider({
     throw new TypeError("fetchImpl must be a function");
   }
 
-  return async ({ character, playerText, world, route }) => {
+  return async ({
+    character,
+    playerText,
+    world,
+    route,
+    conversationContext: rawConversationContext,
+    retrievedFactKeys = []
+  }) => {
     const identityFacts = normalizeIdentityFacts(character);
     const worldFacts = normalizeWorldFacts(world);
-    const relevantWorldFactKeys = findRelevantFactKeys(playerText, worldFacts);
+    const conversationContext = normalizeConversationContext(rawConversationContext);
+    const explicitRetrievedKeys = Array.isArray(retrievedFactKeys)
+      ? retrievedFactKeys.map(String).filter((key) => Object.hasOwn(worldFacts, key))
+      : [];
+    const relevantWorldFactKeys = [...new Set([
+      ...findRelevantFactKeys(playerText, worldFacts),
+      ...explicitRetrievedKeys
+    ])];
     const relevantFactKeys = [...new Set([
       ...findRelevantFactKeys(playerText, identityFacts),
       ...relevantWorldFactKeys,
@@ -186,7 +238,8 @@ export function createOllamaDialogueProvider({
     const retrievedWorldFacts = Object.fromEntries(
       relevantWorldFactKeys.map((key) => [key, worldFacts[key]])
     );
-    const socialAllowed = isSocialInput(playerText);
+    const socialAllowed = isSocialInput(playerText)
+      || (conversationContext.turns.length > 0 && isContinuityInput(playerText) && relevantFactKeys.length === 0);
     const dialogueMode = socialAllowed
       ? "social"
       : relevantFactKeys.length > 0 ? "grounded" : "unknown";
@@ -218,7 +271,13 @@ export function createOllamaDialogueProvider({
           messages: [
             {
               role: "system",
-              content: buildSystemMessage(identityFacts, retrievedWorldFacts, socialAllowed, relevantFactKeys)
+              content: buildSystemMessage(
+                identityFacts,
+                retrievedWorldFacts,
+                socialAllowed,
+                relevantFactKeys,
+                conversationContext
+              )
             },
             { role: "user", content: `${boundedText(playerText, "playerText")}${correction}` }
           ]

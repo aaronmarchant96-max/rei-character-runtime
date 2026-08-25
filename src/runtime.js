@@ -65,7 +65,13 @@ export function createCharacterRuntime({ dialogueProvider, clock = performance }
     throw new TypeError("dialogueProvider must be a function");
   }
 
-  return async function converse({ character, playerText, world = {} }) {
+  return async function converse({
+    character,
+    playerText,
+    world = {},
+    conversationContext = null,
+    retrievedFactKeys = []
+  }) {
     const id = requireText(character?.id, "character.id");
     const name = requireText(character?.name, "character.name");
     const voiceId = character?.voiceId == null ? null : requireText(character.voiceId, "character.voiceId");
@@ -77,6 +83,8 @@ export function createCharacterRuntime({ dialogueProvider, clock = performance }
       character: { id, name, persona: String(character.persona ?? "") },
       playerText: input,
       world: Object.freeze({ ...world }),
+      conversationContext,
+      retrievedFactKeys: Object.freeze([...retrievedFactKeys]),
       route: routeDecision.route
     });
 

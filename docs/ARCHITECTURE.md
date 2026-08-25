@@ -7,6 +7,8 @@ Untrusted / variable                         Trusted / deterministic
 
 player input -----> character context -----> route decision
                            |                       |
+                   bounded memory                 |
+                           |                       |
                            v                       v
                      dialogue provider ----> response validator
                                                    |
@@ -42,6 +44,10 @@ action is data; it is never proof that the action is permitted.
   a game adapter.
 - `src/session.js` validates target knowledge, identity continuity, human
   control, and append-only local session evidence.
+- `src/memory.js` isolates memory by exact character ID, atomically retains the
+  last 24 successful turns, selects at most four relevant/recent turns under a
+  1,600-character prompt budget, and derives a measured familiarity tier from
+  total prior turn count.
 - `src/cli.js` is the current input and diagnostic harness.
 - `scripts/run-oblivion-session.mjs` supervises a player-authored sequence of
   selected-target turns and owns only the local model process it starts.
@@ -171,6 +177,24 @@ The current dialogue boundary distinguishes three modes before generation:
 The live runner currently maps social and unknown turns to `qwen3:0.6b` and
 grounded turns to `qwen3:1.7b`. Model output remains untrusted in every mode.
 
+## Bounded memory boundary
+
+Persistent memory has two distinct roles:
+
+- Prior player/NPC text supplies conversational continuity but is explicitly
+  labelled non-canonical. A generated statement cannot promote itself into
+  lore merely because it was stored.
+- A follow-up such as “How do you feel about that?” may use the prior player
+  question to recover a reviewed profile retrieval. The current turn then
+  receives the original canonical fact and must cite its fact key again.
+
+Memory files live under ignored `.local/character-memory`, keyed by a SHA-256
+digest of the exact game/Form-ID character identity. Different NPCs never share
+a file. Retention and prompt limits prevent “more history” from becoming an
+unbounded latency and context-cost increase. Familiarity currently means only
+measured encounter count; trust, affection, hostility, and durable world events
+are not yet inferred.
+
 Quest state mutation, inventory changes, spawning, combat control, arbitrary
 console commands, and save writes remain prohibited until separately designed
 and tested.
@@ -178,7 +202,9 @@ and tested.
 ## Evidence receipt contract
 
 A successful turn currently records character ID, selected route, route reason,
-measured runtime latency, and measurement mode. Local-model turns also carry an
+measured runtime latency, and measurement mode. Memory-enabled turns also record
+loaded/provided turn counts, provided IDs, context characters, familiarity, and
+the newly stored turn ID. Local-model turns additionally carry an
 augmentation record declaring whether the response is known or unknown, the
 supplied fact keys it used, explicit uncertainty, human decision authority, and
 the absence of model action authority. Voice playback additionally records

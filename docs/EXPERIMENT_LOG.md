@@ -566,3 +566,48 @@ why the live configuration uses it for social/unknown turns but retains 1.7B
 for retrieved biography. The social output is responsive but still less
 polished than desired; live player acceptance, memory, and relationship state
 remain unverified.
+
+## EXP-018 — bounded persistent memory versus stateless follow-up
+
+- Date: 2026-08-24
+- Runtime: local Ollama 0.32.15, CPU-only
+- Profile: exact Nels Form ID/name match
+- Fixture: ask about Nels's daughter, then ask `How do you feel about that?`
+- Voice: skipped to isolate dialogue and context timing
+
+### Remembered effect
+
+- Prior turns loaded/provided: 1 / 1
+- Provided memory ID: `turn-000001`
+- Transcript context: 162 characters
+- Relationship state: 1 prior turn / `met`
+- Re-retrieved canonical key: `profile.family`
+- Model: `qwen3:1.7b`
+- Generated response: `I feel a mix of sorrow and humor. The loss of Olga was
+  painful, but I carry that pain with me, and I laugh at it often.`
+- Input/output tokens: 400 / 63
+- Attempts: 1; grounding passed; fallback not used
+- Model duration: 6,627.563198 ms
+- Provider API cost: $0
+
+### Stateless control
+
+- Prior turns loaded/provided: 0 / 0
+- Retrieved canonical keys: none
+- Model: `qwen3:0.6b`
+- Generated response: `I don't know how I feel about it. I'm just a Nord, and
+  I don't really care about anything. I'm hiding my grief with the way I drink
+  and the way I don't trust the Imperial Legion.`
+- Input/output tokens: 312 / 71
+- Attempts: 1; grounding passed; fallback not used
+- Model duration: 3,503.929851 ms
+- Provider API cost: $0
+- Final verification: 49 tests passed; native key-map compile test passed
+
+The effect resolved the pronoun to the earlier daughter topic and routed using
+the reviewed fact rather than treating stored model text as canonical evidence.
+It also consumed 88 more input tokens and took 3,123.633347 ms longer than the
+stateless control. This is one paired observation, not evidence that additional
+context improves every response. The bounded selector, NPC isolation, and
+canonical-fact handoff are deterministic; broad coherence and player-perceived
+quality still require a multi-turn evaluation corpus and live acceptance.

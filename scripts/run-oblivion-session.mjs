@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { createRoutedOllamaDialogueProvider } from "../src/dialogue.js";
+import { createFileCharacterMemoryStore } from "../src/memory.js";
 import { appendSessionRecord, createSpokenTurnRecord, describeTargetKnowledge } from "../src/session.js";
 import { readTargetEnvelope } from "../src/target.js";
 import { runTargetConversation } from "../src/target-turn.js";
@@ -93,6 +94,7 @@ async function main() {
     `oblivion-${new Date().toISOString().replace(/[:.]/gu, "-")}.jsonl`
   );
   const dialogueProvider = createRoutedOllamaDialogueProvider();
+  const memoryStore = createFileCharacterMemoryStore();
   const terminal = createInterface({ input: process.stdin, output: process.stdout });
   let ownedOllama = null;
 
@@ -134,7 +136,8 @@ async function main() {
           target: snapshot.target,
           playerText: question,
           dialogueProvider,
-          speak: speakPiperTtsRequest
+          speak: speakPiperTtsRequest,
+          memoryStore
         });
         const record = createSpokenTurnRecord({
           target: snapshot.target,

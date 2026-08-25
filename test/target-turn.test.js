@@ -150,6 +150,76 @@ test("Nels daughter question uses retrieved context with model-generated wording
   assert.equal(voiceRequest.voiceId, "en_GB-northern_english_male-medium");
 });
 
+test("a same-NPC follow-up receives bounded memory and reuses canonical topic context", async () => {
+  const records = [];
+  const memoryStore = {
+    async load(characterId) {
+      assert.equal(characterId, "oblivion-2009:00028B76");
+      return {
+        schemaVersion: 1,
+        characterId,
+        totalTurns: records.length,
+        turns: records
+      };
+    },
+    async append(record) {
+      const stored = { ...record, turnId: `turn-${String(records.length + 1).padStart(6, "0")}` };
+      records.push(stored);
+      return stored;
+    }
+  };
+  const target = {
+    schemaVersion: 2,
+    game: "oblivion-2009",
+    referenceFormId: "00028B76",
+    actorKind: "npc",
+    displayName: "Nels the Naughty",
+    locationFormId: "00027D53",
+    locationName: "Summitmist Manor"
+  };
+  const requests = [];
+  const dialogueProvider = async (request) => {
+    requests.push(request);
+    return {
+      speech: requests.length === 1
+        ? "Olga's loss is a wound I still carry."
+        : "It is not a grief that leaves a father.",
+      actions: [],
+      augmentation: {
+        answerMode: "known",
+        usedFactKeys: ["profile.family"]
+      }
+    };
+  };
+  const speak = async (request) => ({
+    characterId: request.characterId,
+    status: "played"
+  });
+
+  await runTargetConversation({
+    target,
+    playerText: "Tell me about your daughter.",
+    dialogueProvider,
+    speak,
+    memoryStore
+  });
+  const followUp = await runTargetConversation({
+    target,
+    playerText: "How do you feel about that?",
+    dialogueProvider,
+    speak,
+    memoryStore
+  });
+
+  assert.equal(requests[1].conversationContext.turns.length, 1);
+  assert.equal(requests[1].conversationContext.turns[0].playerText, "Tell me about your daughter.");
+  assert.equal(requests[1].world["profile.family"], "His daughter Olga died when bandits attacked his village.");
+  assert.deepEqual(followUp.turn.profileReceipt.retrievedFactKeys, ["profile.family"]);
+  assert.equal(followUp.turn.memoryReceipt.loadedTurns, 1);
+  assert.deepEqual(followUp.turn.memoryReceipt.providedTurnIds, ["turn-000001"]);
+  assert.equal(followUp.turn.memoryReceipt.storedTurnId, "turn-000002");
+});
+
 test("a mismatched target name keeps the generic facts and voice", async () => {
   let dialogueRequest;
   let voiceRequest;

@@ -1,4 +1,5 @@
 import { createCharacterRuntime } from "./runtime.js";
+import { selectConversationContext } from "./memory.js";
 import {
   OBLIVION_PROFILE_CATALOG,
   resolveOblivionProfile,
@@ -28,13 +29,25 @@ export async function runTargetConversation({
   playerText,
   dialogueProvider,
   speak,
+  memoryStore = null,
   profileCatalog = OBLIVION_PROFILE_CATALOG
 }) {
   if (typeof speak !== "function") throw new TypeError("speak must be a function");
   const normalizedTarget = normalizeTarget(target);
   const profile = resolveOblivionProfile(normalizedTarget, profileCatalog);
-  const selectedProfile = selectProfileFacts(profile, playerText);
   const character = createTargetCharacter(normalizedTarget, profileCatalog);
+  const memory = memoryStore
+    ? await memoryStore.load(character.id)
+    : { schemaVersion: 1, characterId: character.id, totalTurns: 0, turns: [] };
+  const conversationContext = selectConversationContext(memory, playerText);
+  let selectedProfile = selectProfileFacts(profile, playerText);
+  if (!selectedProfile.retrieval
+    && /\b(that|this|it|they|them|he|she|her|him|those|these|earlier|before|again)\b/iu.test(playerText)) {
+    for (const previous of [...conversationContext.turns].reverse()) {
+      selectedProfile = selectProfileFacts(profile, `${playerText} ${previous.playerText}`);
+      if (selectedProfile.retrieval) break;
+    }
+  }
   const converse = createCharacterRuntime({ dialogueProvider });
   const world = {
     "game.referenceFormId": normalizedTarget.referenceFormId,
@@ -50,7 +63,9 @@ export async function runTargetConversation({
   const turn = await converse({
     character,
     playerText,
-    world
+    world,
+    conversationContext,
+    retrievedFactKeys: selectedProfile.retrieval?.factKeys ?? []
   });
   turn.profileReceipt = profile
     ? {
@@ -82,5 +97,33 @@ export async function runTargetConversation({
         voiceSource: null
       };
   turn.voiceReceipt = await speak(turn.ttsRequest);
+  if (memoryStore) {
+    const stored = await memoryStore.append({
+      characterId: character.id,
+      playerText,
+      npcText: turn.speech,
+      answerMode: turn.augmentation?.answerMode ?? "unknown",
+      usedFactKeys: turn.augmentation?.usedFactKeys ?? []
+    });
+    turn.memoryReceipt = {
+      mode: "persistent-local",
+      loadedTurns: memory.totalTurns,
+      providedTurns: conversationContext.turns.length,
+      providedTurnIds: conversationContext.turns.map((entry) => entry.turnId),
+      contextCharacters: conversationContext.characterCount,
+      relationship: conversationContext.relationship,
+      storedTurnId: stored.turnId
+    };
+  } else {
+    turn.memoryReceipt = {
+      mode: "disabled",
+      loadedTurns: 0,
+      providedTurns: 0,
+      providedTurnIds: [],
+      contextCharacters: 0,
+      relationship: conversationContext.relationship,
+      storedTurnId: null
+    };
+  }
   return { target: normalizedTarget, turn };
 }

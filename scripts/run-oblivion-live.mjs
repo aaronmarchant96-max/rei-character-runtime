@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { writeBridgeResponse } from "../src/bridge.js";
 import { createRoutedOllamaDialogueProvider } from "../src/dialogue.js";
 import { bindQuestionToTarget } from "../src/live-turn.js";
+import { createFileCharacterMemoryStore } from "../src/memory.js";
 import { readQuestionEnvelope } from "../src/question.js";
 import { appendSessionRecord, createSpokenTurnRecord } from "../src/session.js";
 import { readTargetEnvelope } from "../src/target.js";
@@ -76,6 +77,7 @@ async function main() {
     `oblivion-live-${new Date().toISOString().replace(/[:.]/gu, "-")}.jsonl`
   );
   const dialogueProvider = createRoutedOllamaDialogueProvider();
+  const memoryStore = createFileCharacterMemoryStore();
   const ownedOllama = await ensureLocalOllama();
   let lastQuestionIdentity = await fileIdentity(questionPath);
 
@@ -110,7 +112,8 @@ async function main() {
             target: bound.target,
             playerText: bound.question,
             dialogueProvider,
-            speak: speakPiperTtsRequest
+            speak: speakPiperTtsRequest,
+            memoryStore
           });
           const responseReceipt = await writeBridgeResponse({
             outputPath: responsePath,

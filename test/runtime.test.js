@@ -278,6 +278,94 @@ test("social dialogue is generated in character without fabricated fact citation
   assert.equal(proposal.providerReceipt.groundingStatus, "passed");
 });
 
+test("a continuity question receives bounded transcript and relationship context", async () => {
+  let request;
+  const provider = createOllamaDialogueProvider({
+    modelByMode: { social: "qwen3:0.6b" },
+    fetchImpl: async (_url, options) => {
+      request = JSON.parse(options.body);
+      return {
+        ok: true,
+        json: async () => ({
+          message: { content: JSON.stringify({
+            speech: "Aye, I remember our talk.",
+            actions: [],
+            usedFactKeys: [],
+            answerMode: "social"
+          }) },
+          prompt_eval_count: 90,
+          eval_count: 9
+        })
+      };
+    }
+  });
+
+  const proposal = await provider({
+    character: { name: "Nels", persona: "A guarded Nord" },
+    playerText: "Do you remember what we spoke about before?",
+    world: {},
+    conversationContext: {
+      turns: [{
+        turnId: "turn-000001",
+        playerText: "Tell me about your daughter.",
+        npcText: "Olga's loss is a wound I carry.",
+        answerMode: "known",
+        usedFactKeys: ["profile.family"]
+      }],
+      relationship: { turnCount: 1, familiarity: "met" }
+    }
+  });
+
+  assert.equal(request.model, "qwen3:0.6b");
+  assert.match(request.messages[0].content, /turn-000001/u);
+  assert.match(request.messages[0].content, /not canonical evidence/u);
+  assert.match(request.messages[0].content, /"familiarity":"met"/u);
+  assert.equal(proposal.augmentation.answerMode, "social");
+});
+
+test("an explicit retrieved fact survives anaphoric follow-up filtering and selects grounded routing", async () => {
+  let request;
+  const provider = createOllamaDialogueProvider({
+    modelByMode: { grounded: "qwen3:1.7b", unknown: "qwen3:0.6b" },
+    fetchImpl: async (_url, options) => {
+      request = JSON.parse(options.body);
+      return {
+        ok: true,
+        json: async () => ({
+          message: { content: JSON.stringify({
+            speech: "A father does not set such grief aside.",
+            actions: [],
+            usedFactKeys: ["profile.family"],
+            answerMode: "known"
+          }) }
+        })
+      };
+    }
+  });
+
+  const proposal = await provider({
+    character: { name: "Nels", persona: "A grieving Nord" },
+    playerText: "How do you feel about that?",
+    world: { "profile.family": "His daughter Olga died." },
+    retrievedFactKeys: ["profile.family"],
+    conversationContext: {
+      turns: [{
+        turnId: "turn-000001",
+        playerText: "Tell me about your daughter.",
+        npcText: "Olga's loss is a wound I carry.",
+        answerMode: "known",
+        usedFactKeys: ["profile.family"]
+      }],
+      relationship: { turnCount: 1, familiarity: "met" }
+    }
+  });
+
+  assert.equal(request.model, "qwen3:1.7b");
+  assert.match(request.messages[0].content, /His daughter Olga died/u);
+  assert.equal(proposal.augmentation.answerMode, "known");
+  assert.deepEqual(proposal.augmentation.usedFactKeys, ["profile.family"]);
+});
+
 test("Ollama retries an ungrounded answer then falls back safely", async () => {
   let attempts = 0;
   const provider = createOllamaDialogueProvider({

@@ -17,7 +17,9 @@ question; the external runtime validates identity, routes to local Ollama,
 grounds the answer, speaks it through Piper, records measured receipts, and
 returns the response to an in-game message box. Audio is still desktop playback
 through Piper. One exact NPC profile now selects a distinct local prototype
-voice; audio is still desktop playback rather than spatial game audio.
+voice. Bounded per-character memory now carries relevant recent conversation
+and measured familiarity across sessions; audio is still desktop playback
+rather than spatial game audio.
 The default demo remains deterministic and offline; the optional
 `--dialogue=ollama` workflow calls a local dialogue-model provider.
 
@@ -201,6 +203,9 @@ Aim at an NPC or creature, press `Y`, type the question, and press Enter. The
 runtime starts or reuses local Ollama, requires the question Form ID to match the
 freshly exported target, speaks the validated response through Piper, atomically
 publishes it back to the plugin, and retains a local JSONL evidence record.
+Successful turns also enter an ignored local memory file keyed to the exact NPC
+identity. At most four relevant/recent turns and 1,600 transcript characters
+can enter a later prompt; canonical facts remain a separate evidence layer.
 
 ## Architecture
 
@@ -241,4 +246,4 @@ Planned adapters:
 Experimental pre-alpha. One live typed conversation loop is verified in original
 Oblivion. One exact NPC has a locally tested knowledge and voice profile;
 in-game confirmation of that new overlay, broader NPC coverage, spatial audio,
-lip synchronization, memory, and actions remain incomplete.
+lip synchronization, richer relationship state, and actions remain incomplete.

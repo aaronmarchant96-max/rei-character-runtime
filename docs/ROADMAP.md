@@ -135,6 +135,14 @@ mode, and routes by dialogue need. Warm local controls measured 2.22 seconds
 for social generation on `qwen3:0.6b` and 5.22 seconds for a grounded daughter
 answer on `qwen3:1.7b`. Memory and relationship evolution remain pending.
 
+EXP-018 adds the first persistent per-character memory layer. A paired local
+control showed that “How do you feel about that?” recovered the earlier daughter
+topic, re-retrieved `profile.family`, and stayed on the grounded 1.7B route. The
+stateless control had no retrievable topic and used the 0.6B path. This proves
+bounded continuity for one two-turn fixture, not general character improvement.
+Corpus-level consistency, subjective quality, richer relationship variables,
+and long-session latency remain future measurements.
+
 ## Milestone 5 — transfer experiment
 
 Adapt the runtime to Fallout 3 or New Vegas. Record runtime reuse, adapter-only
