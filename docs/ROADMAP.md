@@ -103,6 +103,10 @@ the default. Local synthesis is verified, but live audible confirmation and
 spatial attachment remain outstanding. The selected model is noncommercial
 prototype-only, not distribution-cleared.
 
+The first live EXP-015 audition was rejected for voice quality. EXP-016 replaces
+Ryan with `en_GB-northern_english_male-medium`, whose dataset is CC BY-SA 4.0.
+Local playback is verified; player acceptance of the new voice remains pending.
+
 ## Milestone 4 — memory and world state
 
 Claim: bounded retrieved memories and allow-listed game facts improve character
@@ -118,6 +122,11 @@ EXP-015 adds five provenance-labelled paraphrased facts for one exact Nels
 identity. A local origin question passed the grounding gate using only
 `profile.origin`; unsupported questions still use the existing uncertainty
 path. This is one control, not a broad character-quality result.
+
+The first live daughter question exposed a 24.5-second, two-attempt fallback.
+EXP-016 adds deterministic retrieval for the five reviewed Nels facts. The same
+question now reaches a grounded answer in 0.29 ms before speech with no model
+call; unsupported questions still use Ollama.
 
 ## Milestone 5 — transfer experiment
 

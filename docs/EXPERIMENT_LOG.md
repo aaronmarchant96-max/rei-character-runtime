@@ -476,3 +476,46 @@ treated as commercially cleared. The model response and WAV synthesis were
 verified locally, but playback was intentionally skipped in this control. A
 live in-game audible turn is still required before claiming the new profile and
 voice were heard in Oblivion.
+
+## EXP-016 — failed daughter turn drives deterministic retrieval repair
+
+### Live failure
+
+- Date: 2026-08-24
+- Question: `tell me about your daughter`
+- Visible response: `I can't say that I've noticed anything certain about that.`
+- Dialogue provider/model: `ollama-local` / `qwen3:1.7b`
+- Input/output tokens: 643 / 145 across two attempts
+- Dialogue duration: 24,479.640757 ms
+- Runtime turn latency: 24,505.076913000026 ms
+- Validation failures: `sentence-limit`, `irrelevant-fact-citation`, and
+  `unknown-cites-facts`
+- Voice: `en_US-ryan-medium`, played in 5,399.213179000013 ms
+- Human observation: response took too long, returned the safe fallback, and
+  the voice did not sound like a normal NPC voice
+- Mode: exact values retained in the live JSONL record; quality is one human
+  observation
+
+### Local repair control
+
+- Identical question and Nels identity
+- Response: `My daughter Olga died when bandits attacked our village.`
+- Dialogue provider/model: `profile-retrieval` / `deterministic-v1`
+- Used fact key: `profile.family`
+- Input/output model tokens: 0 / 0
+- Dialogue duration: 0.104575999999998 ms
+- Runtime turn latency: 0.2850360000000016 ms
+- Model calls: 0
+- Grounding: passed in one deterministic retrieval
+- Replacement voice: `en_GB-northern_english_male-medium`
+- Dataset license recorded by registry: CC BY-SA 4.0
+- Voice model SHA-256:
+  `57a219ae8e638873db7d18893304be5069c42868f392bb95c3ff17f0690d0689`
+- Voice synthesis-plus-playback latency: 4,579.350079 ms
+- Final verification: 43 tests passed; native key-map compile test passed
+- Mode: dialogue, route, voice, model hash, and test values measured locally
+
+This repair does not weaken the uncertainty boundary. Only explicit reviewed
+triggers can use deterministic profile retrieval; other questions still reach
+Ollama and its grounding gate. Live in-game confirmation and human acceptance
+of the replacement voice remain outstanding.

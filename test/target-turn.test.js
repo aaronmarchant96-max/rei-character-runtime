@@ -81,7 +81,7 @@ test("profiled Nels receives bounded facts and his configured prototype voice", 
       locationFormId: "00027D53",
       locationName: "Summitmist Manor"
     },
-    playerText: "Where are you from?",
+    playerText: "What color is the moon?",
     dialogueProvider: async (request) => {
       dialogueRequest = request;
       return { speech: "I come from a small village in Skyrim.", actions: [] };
@@ -102,10 +102,50 @@ test("profiled Nels receives bounded facts and his configured prototype voice", 
   assert.match(dialogueRequest.character.persona, /Nord/u);
   assert.equal(dialogueRequest.world["profile.origin"], "Nels comes from a small village in Skyrim.");
   assert.equal(dialogueRequest.world["profile.ambition"].includes("Hoary Boar"), true);
-  assert.equal(voiceRequest.voiceId, "en_US-ryan-medium");
+  assert.equal(voiceRequest.voiceId, "en_GB-northern_english_male-medium");
   assert.equal(output.turn.profileReceipt.profileId, "oblivion:nels-the-naughty");
-  assert.equal(output.turn.profileReceipt.voiceUsePolicy, "local-noncommercial-prototype");
+  assert.equal(output.turn.profileReceipt.voiceUsePolicy, "local-attribution-sharealike-prototype");
+  assert.equal(output.turn.profileReceipt.voiceDatasetLicense, "CC-BY-SA-4.0");
   assert.equal(output.turn.profileReceipt.factKeys.length, 5);
+});
+
+test("Nels daughter question uses deterministic profile retrieval instead of the model", async () => {
+  let modelCalls = 0;
+  let voiceRequest;
+  const output = await runTargetConversation({
+    target: {
+      schemaVersion: 2,
+      game: "oblivion-2009",
+      referenceFormId: "00028B76",
+      actorKind: "npc",
+      displayName: "Nels the Naughty",
+      locationFormId: "00027D53",
+      locationName: "Summitmist Manor"
+    },
+    playerText: "Tell me about your daughter",
+    dialogueProvider: async () => {
+      modelCalls += 1;
+      return { speech: "model should not run", actions: [] };
+    },
+    speak: async (request) => {
+      voiceRequest = request;
+      return {
+        characterId: request.characterId,
+        backend: "test-voice",
+        model: request.voiceId,
+        status: "played",
+        latencyMs: 1,
+        measurementMode: "measured"
+      };
+    }
+  });
+
+  assert.equal(modelCalls, 0);
+  assert.equal(output.turn.speech, "My daughter Olga died when bandits attacked our village.");
+  assert.deepEqual(output.turn.augmentation.usedFactKeys, ["profile.family"]);
+  assert.equal(output.turn.dialogueReceipt.provider, "profile-retrieval");
+  assert.equal(output.turn.dialogueReceipt.inputTokens, 0);
+  assert.equal(voiceRequest.voiceId, "en_GB-northern_english_male-medium");
 });
 
 test("a mismatched target name keeps the generic facts and voice", async () => {

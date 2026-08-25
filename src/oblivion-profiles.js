@@ -1,3 +1,5 @@
+import { performance } from "node:perf_hooks";
+
 const PROFILE_CATALOG = {
   schemaVersion: 1,
   catalogId: "oblivion-profile-v1",
@@ -13,9 +15,43 @@ const PROFILE_CATALOG = {
         "profile.ambition": "He hopes to open a tavern called The Hoary Boar if he ever gets enough gold.",
         "profile.relationship.dovesi": "Dovesi reminds him of his daughter, so he feels protective toward her."
       },
+      retrievals: [
+        {
+          intent: "relationship-dovesi",
+          triggers: ["dovesi"],
+          speech: "Dovesi reminds me of my daughter, so I feel protective toward her.",
+          factKeys: ["profile.relationship.dovesi"]
+        },
+        {
+          intent: "family-daughter",
+          triggers: ["daughter", "olga"],
+          speech: "My daughter Olga died when bandits attacked our village.",
+          factKeys: ["profile.family"]
+        },
+        {
+          intent: "imperial-legion",
+          triggers: ["imperial legion", "legion"],
+          speech: "I resent the Imperial Legion because it failed to protect my village.",
+          factKeys: ["profile.legion"]
+        },
+        {
+          intent: "tavern-ambition",
+          triggers: ["hoary boar", "tavern", "enough gold", "dream", "ambition"],
+          speech: "If I ever get enough gold, I want to open a tavern called The Hoary Boar.",
+          factKeys: ["profile.ambition"]
+        },
+        {
+          intent: "origin",
+          triggers: ["where are you from", "where did you come from", "homeland", "origin", "skyrim"],
+          speech: "I come from a small village in Skyrim.",
+          factKeys: ["profile.origin"]
+        }
+      ],
       voice: {
-        modelId: "en_US-ryan-medium",
-        usePolicy: "local-noncommercial-prototype"
+        modelId: "en_GB-northern_english_male-medium",
+        usePolicy: "local-attribution-sharealike-prototype",
+        datasetLicense: "CC-BY-SA-4.0",
+        source: "https://huggingface.co/rhasspy/piper-voices/tree/main/en/en_GB/northern_english_male/medium"
       },
       provenance: {
         mode: "secondary-source-paraphrase",
@@ -66,7 +102,7 @@ export function parseOblivionProfileCatalog(value) {
     }
     requireExactKeys(
       candidate,
-      ["profileId", "expectedName", "persona", "facts", "voice", "provenance"],
+      ["profileId", "expectedName", "persona", "facts", "retrievals", "voice", "provenance"],
       `profile ${referenceFormId}`
     );
     const profileId = requireBoundedText(candidate.profileId, "profileId", 80);
@@ -86,13 +122,45 @@ export function parseOblivionProfileCatalog(value) {
       return [key, requireBoundedText(fact, `profile fact ${key}`)];
     }));
 
+    if (!Array.isArray(candidate.retrievals) || candidate.retrievals.length === 0
+      || candidate.retrievals.length > 12) {
+      throw new TypeError("profile retrievals must contain between 1 and 12 entries");
+    }
+    const retrievals = candidate.retrievals.map((retrieval, index) => {
+      if (!retrieval || typeof retrieval !== "object" || Array.isArray(retrieval)) {
+        throw new TypeError(`profile retrieval ${index} must be an object`);
+      }
+      requireExactKeys(retrieval, ["intent", "triggers", "speech", "factKeys"], `profile retrieval ${index}`);
+      const intent = requireBoundedText(retrieval.intent, `profile retrieval ${index} intent`, 80);
+      if (!Array.isArray(retrieval.triggers) || retrieval.triggers.length === 0 || retrieval.triggers.length > 8) {
+        throw new TypeError(`profile retrieval ${index} triggers must contain between 1 and 8 entries`);
+      }
+      const triggers = retrieval.triggers.map((trigger) => {
+        const normalized = requireBoundedText(trigger, `profile retrieval ${index} trigger`, 80).toLowerCase();
+        if (normalized.length < 4) throw new TypeError("profile retrieval triggers must be at least 4 characters");
+        return normalized;
+      });
+      const speech = requireBoundedText(retrieval.speech, `profile retrieval ${index} speech`, 280);
+      if (!Array.isArray(retrieval.factKeys) || retrieval.factKeys.length === 0) {
+        throw new TypeError(`profile retrieval ${index} factKeys must be a non-empty array`);
+      }
+      const factKeys = retrieval.factKeys.map((key) => {
+        if (!Object.hasOwn(facts, key)) throw new TypeError(`profile retrieval references unknown fact key: ${key}`);
+        return key;
+      });
+      return Object.freeze({ intent, triggers: Object.freeze(triggers), speech, factKeys: Object.freeze(factKeys) });
+    });
+
     if (!candidate.voice || typeof candidate.voice !== "object" || Array.isArray(candidate.voice)) {
       throw new TypeError("profile voice must be an object");
     }
-    requireExactKeys(candidate.voice, ["modelId", "usePolicy"], "profile voice");
+    requireExactKeys(candidate.voice, ["modelId", "usePolicy", "datasetLicense", "source"], "profile voice");
     const modelId = requireBoundedText(candidate.voice.modelId, "voice modelId", 80);
     if (!VOICE_ID_PATTERN.test(modelId)) throw new TypeError("voice modelId has an invalid format");
     const usePolicy = requireBoundedText(candidate.voice.usePolicy, "voice usePolicy", 80);
+    const datasetLicense = requireBoundedText(candidate.voice.datasetLicense, "voice datasetLicense", 80);
+    const voiceSource = requireBoundedText(candidate.voice.source, "voice source", 300);
+    if (!voiceSource.startsWith("https://")) throw new TypeError("voice source must use HTTPS");
 
     if (!candidate.provenance || typeof candidate.provenance !== "object" || Array.isArray(candidate.provenance)) {
       throw new TypeError("profile provenance must be an object");
@@ -115,7 +183,8 @@ export function parseOblivionProfileCatalog(value) {
       expectedName,
       persona,
       facts: Object.freeze(facts),
-      voice: Object.freeze({ modelId, usePolicy }),
+      retrievals: Object.freeze(retrievals),
+      voice: Object.freeze({ modelId, usePolicy, datasetLicense, source: voiceSource }),
       provenance: Object.freeze({ mode, reviewedAt, sources: Object.freeze(sources) })
     });
   }
@@ -130,4 +199,50 @@ export function resolveOblivionProfile(target, catalog = OBLIVION_PROFILE_CATALO
   if (!profile) return null;
   if (target.displayName !== profile.expectedName) return null;
   return profile;
+}
+
+function normalizeQuestion(value) {
+  return String(value).toLowerCase().replace(/[^a-z0-9]+/gu, " ").trim();
+}
+
+export function findProfileRetrieval(profile, playerText) {
+  if (!profile) return null;
+  const question = normalizeQuestion(playerText);
+  return profile.retrievals.find((retrieval) =>
+    retrieval.triggers.some((trigger) => question.includes(trigger))) ?? null;
+}
+
+export function createProfileDialogueProvider({ profile, fallback, clock = performance }) {
+  if (typeof fallback !== "function") throw new TypeError("fallback must be a function");
+  return async (request) => {
+    const started = clock.now();
+    const retrieval = findProfileRetrieval(profile, request.playerText);
+    if (!retrieval) return fallback(request);
+    return {
+      speech: retrieval.speech,
+      actions: [],
+      augmentation: {
+        answerMode: "known",
+        usedFactKeys: [...retrieval.factKeys],
+        uncertainty: "none",
+        humanControl: "player-decides",
+        actionAuthority: "none"
+      },
+      providerReceipt: {
+        provider: "profile-retrieval",
+        model: "deterministic-v1",
+        inputTokens: 0,
+        outputTokens: 0,
+        totalDurationMs: Math.max(0, clock.now() - started),
+        loadDurationMs: 0,
+        generationDurationMs: 0,
+        providerApiCostUsd: 0,
+        attempts: 1,
+        groundingStatus: "passed",
+        fallbackUsed: false,
+        validationFailures: [],
+        measurementMode: "measured"
+      }
+    };
+  };
 }

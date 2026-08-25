@@ -35,6 +35,9 @@ action is data; it is never proof that the action is permitted.
 - `src/oblivion-profiles.js` validates a bounded, provenance-bearing overlay
   keyed by exact Form ID and game-derived name. It supplies paraphrased facts
   and an explicitly policy-labelled Piper model; a mismatch returns no overlay.
+  Reviewed trigger phrases resolve to fixed, cited first-person answers before
+  Ollama. Questions without an exact retrieval continue through the model and
+  grounding gate.
 - `src/bridge.js` validates and atomically publishes a bounded text response for
   a game adapter.
 - `src/session.js` validates target knowledge, identity continuity, human

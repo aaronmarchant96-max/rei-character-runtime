@@ -44,15 +44,17 @@ python3 -m venv .venv
 .venv/bin/pip install piper-tts
 mkdir -p .local/voices
 .venv/bin/python3 -m piper.download_voices \
-  --data-dir .local/voices en_US-lessac-medium en_US-ryan-medium
+  --data-dir .local/voices en_US-lessac-medium \
+  en_GB-northern_english_male-medium
 npm run voice:neural -- "Have you seen anything near the ruins?"
 ```
 
 The selected model and its metadata remain local and are excluded from Git.
 Its model card identifies the source dataset and training provenance. Treat
-commercial voice rights as a separate clearance question. Ryan's source
-dataset is CC BY-NC-SA 4.0, so EchoForge marks that voice local noncommercial
-prototype only. This prototype does not clone a Bethesda performer.
+commercial voice rights as a separate clearance question. The Northern English
+male model's dataset is CC BY-SA 4.0, so EchoForge records attribution and
+share-alike obligations with the local prototype. This prototype does not clone
+a Bethesda performer.
 
 ### Optional local dynamic dialogue
 
@@ -166,8 +168,10 @@ dialogue facts. In EXP-013, selecting `Nels the Naughty` inside `Summitmist
 Manor` produced a grounded response that used those exact facts without
 importing canonical dialogue. A strict profile overlay now matches only Nels's
 exact Form ID and game-derived name, adds five short sourced fact paraphrases,
-and selects `en_US-ryan-medium`. Unknown or mismatched actors retain the generic
-facts and default voice.
+and selects `en_GB-northern_english_male-medium`. Exact reviewed questions use
+deterministic profile retrieval before Ollama, eliminating model latency and
+hallucination risk for those answers. Unknown questions still reach the model;
+unknown or mismatched actors retain the generic facts and default voice.
 
 For a repeatable human-controlled loop, use one command:
 

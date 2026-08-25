@@ -1,5 +1,9 @@
 import { createCharacterRuntime } from "./runtime.js";
-import { OBLIVION_PROFILE_CATALOG, resolveOblivionProfile } from "./oblivion-profiles.js";
+import {
+  createProfileDialogueProvider,
+  OBLIVION_PROFILE_CATALOG,
+  resolveOblivionProfile
+} from "./oblivion-profiles.js";
 import { parseTargetEnvelope } from "./target.js";
 
 function normalizeTarget(target) {
@@ -30,7 +34,9 @@ export async function runTargetConversation({
   const normalizedTarget = normalizeTarget(target);
   const profile = resolveOblivionProfile(normalizedTarget, profileCatalog);
   const character = createTargetCharacter(normalizedTarget, profileCatalog);
-  const converse = createCharacterRuntime({ dialogueProvider });
+  const converse = createCharacterRuntime({
+    dialogueProvider: createProfileDialogueProvider({ profile, fallback: dialogueProvider })
+  });
   const world = {
     "game.referenceFormId": normalizedTarget.referenceFormId,
     "game.actorKind": normalizedTarget.actorKind
@@ -56,7 +62,9 @@ export async function runTargetConversation({
         provenanceMode: profile.provenance.mode,
         provenanceReviewedAt: profile.provenance.reviewedAt,
         voiceId: profile.voice.modelId,
-        voiceUsePolicy: profile.voice.usePolicy
+        voiceUsePolicy: profile.voice.usePolicy,
+        voiceDatasetLicense: profile.voice.datasetLicense,
+        voiceSource: profile.voice.source
       }
     : {
         catalogId: profileCatalog.catalogId,
@@ -66,7 +74,9 @@ export async function runTargetConversation({
         provenanceMode: "none",
         provenanceReviewedAt: null,
         voiceId: null,
-        voiceUsePolicy: null
+        voiceUsePolicy: null,
+        voiceDatasetLicense: null,
+        voiceSource: null
       };
   turn.voiceReceipt = await speak(turn.ttsRequest);
   return { target: normalizedTarget, turn };
