@@ -143,6 +143,13 @@ bounded continuity for one two-turn fixture, not general character improvement.
 Corpus-level consistency, subjective quality, richer relationship variables,
 and long-session latency remain future measurements.
 
+EXP-019 rejects Mantella's outdated Skyrim Llama 3 8B fine-tune for the live
+route on this CPU-only machine. Its role-play was more fluent without the
+structured contract, but it added unsupported details; the structured turn took
+53.33 seconds and repeated itself. Specialization remains worth pursuing, but
+only with a current model, an entailment-aware evaluation corpus, and latency
+that survives the in-game acceptance gate.
+
 ## Milestone 5 — transfer experiment
 
 Adapt the runtime to Fallout 3 or New Vegas. Record runtime reuse, adapter-only

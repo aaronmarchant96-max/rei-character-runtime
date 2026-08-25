@@ -611,3 +611,67 @@ stateless control. This is one paired observation, not evidence that additional
 context improves every response. The bounded selector, NPC isolation, and
 canonical-fact handoff are deterministic; broad coherence and player-perceived
 quality still require a multi-turn evaluation corpus and live acceptance.
+
+## EXP-019 — Mantella Skyrim Llama 3 8B compatibility gate
+
+- Date: 2026-08-24
+- Model: `art-from-the-machine/Mantella-Skyrim-Llama-3-8B-GGUF`
+- Quantization: `Q4_K_M`; installed size reported by Ollama: 4.9 GB
+- Runtime: project-local Ollama 0.32.15, CPU-only
+- Upstream source:
+  `https://huggingface.co/art-from-the-machine/Mantella-Skyrim-Llama-3-8B-GGUF`
+- Upstream license: Apache-2.0
+- Upstream status: model card labels the fine-tune outdated, worse than newer
+  non-fine-tuned models, and no longer recommended for Mantella
+- Training claim: 8,800+ player/NPC interactions; context length 8,192
+- Production routing: unchanged
+- Final verification: 49 tests passed; native key-map compile test passed
+
+### EchoForge structured contract
+
+The first cold request exceeded the runtime's 60-second deadline without a
+response. A subsequent resident-model control completed with:
+
+- Question: `Tell me about your daughter.`
+- Response: `I don't like talking about that.` repeated three times
+- Input/output tokens: 703 / 133
+- Attempts: 2
+- Validation failures: `sentence-limit`
+- Grounding status: passed on the second attempt; fallback not used
+- Total duration: 53,334.21392 ms
+- Load duration: 4.336885 ms
+- Generation duration: 49,813.065 ms
+- Resident model allocation: 5.6 GB; processor: 100% CPU
+- System state while resident: 1.5 GiB available RAM; 2.0 GiB swap used
+
+### Matched current-model control
+
+The same current prompt on `qwen3:1.7b` completed in one attempt:
+
+- Input/output tokens: 330 / 63
+- Total duration: 25,976.617475 ms
+- Load duration after model swap: 12,587.391708 ms
+- Generation duration: 6,439.512 ms
+- Validation failures: none
+
+Its answer nevertheless invented Olga's age, exposing that exact fact-key
+citation does not yet prove every clause is entailed by the supplied fact.
+
+### Raw role-play probe
+
+With structured output removed and only a short persona/fact prompt retained,
+the 8B model generated more fluent fantasy dialogue but invented Olga's traits,
+pranks, additional village deaths, and a history of drinking after her death.
+
+- Input/output tokens: 98 / 69
+- Total duration: 47,535.094707 ms
+- Load duration: 12,448.146054 ms
+- Generation duration: 25,261.304 ms
+
+The model is retained only as an ignored local research asset. It is rejected
+for live routing because it misses the 60-second cold deadline, remains roughly
+7.7 times slower under the structured contract (and 3.9 times slower in the raw
+probe) than the matched 1.7B generation, repeats under the structured contract,
+and adds unsupported details in raw dialogue.
+The result also rejects the assumption that domain fine-tuning alone produces
+a better evidence-bound character runtime.
