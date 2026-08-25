@@ -77,6 +77,7 @@ export function createSpokenTurnRecord({ target, question, turn }) {
     dialogueReceipt: turn?.dialogueReceipt ?? null,
     routeReceipt: turn?.receipt ?? null,
     profileReceipt: turn?.profileReceipt ?? null,
+    materialReceipt: turn?.materialReceipt ?? null,
     memoryReceipt: turn?.memoryReceipt ?? null,
     voiceReceipt: turn?.voiceReceipt ?? null,
     proposedActions: [],

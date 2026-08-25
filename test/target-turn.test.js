@@ -82,6 +82,7 @@ test("profiled Nels receives bounded facts and his configured prototype voice", 
       locationName: "Summitmist Manor"
     },
     playerText: "Tell me about your daughter",
+    preparedMaterialCatalog: null,
     dialogueProvider: async (request) => {
       dialogueRequest = request;
       return { speech: "I do not care to speak lightly of Olga.", actions: [] };
@@ -112,7 +113,7 @@ test("profiled Nels receives bounded facts and his configured prototype voice", 
   assert.deepEqual(output.turn.profileReceipt.retrievedFactKeys, ["profile.family"]);
 });
 
-test("Nels daughter question uses retrieved context with model-generated wording", async () => {
+test("Nels daughter question uses approved prepared wording without a live model call", async () => {
   let modelCalls = 0;
   let voiceRequest;
   const output = await runTargetConversation({
@@ -128,7 +129,7 @@ test("Nels daughter question uses retrieved context with model-generated wording
     playerText: "Tell me about your daughter",
     dialogueProvider: async () => {
       modelCalls += 1;
-      return { speech: "Olga's loss is a wound I still carry.", actions: [] };
+      throw new Error("prepared dialogue must not call the live model");
     },
     speak: async (request) => {
       voiceRequest = request;
@@ -143,11 +144,41 @@ test("Nels daughter question uses retrieved context with model-generated wording
     }
   });
 
-  assert.equal(modelCalls, 1);
-  assert.equal(output.turn.speech, "Olga's loss is a wound I still carry.");
+  assert.equal(modelCalls, 0);
+  assert.equal(output.turn.speech, "Olga was my daughter. She died when bandits attacked our village.");
+  assert.equal(output.turn.dialogueReceipt.provider, "prepared-character-material");
+  assert.equal(output.turn.dialogueReceipt.inputTokens, 0);
+  assert.equal(output.turn.dialogueReceipt.outputTokens, 0);
+  assert.equal(output.turn.materialReceipt.materialId, "nels-family-v1");
+  assert.equal(output.turn.materialReceipt.variantIndex, 0);
   assert.equal(output.turn.profileReceipt.retrievalIntent, "family-daughter");
   assert.deepEqual(output.turn.profileReceipt.retrievedFactKeys, ["profile.family"]);
   assert.equal(voiceRequest.voiceId, "en_GB-northern_english_male-medium");
+});
+
+test("Nels unmatched questions retain the live dialogue path", async () => {
+  let modelCalls = 0;
+  const output = await runTargetConversation({
+    target: {
+      schemaVersion: 2,
+      game: "oblivion-2009",
+      referenceFormId: "00028B76",
+      actorKind: "npc",
+      displayName: "Nels the Naughty",
+      locationFormId: "00027D53",
+      locationName: "Summitmist Manor"
+    },
+    playerText: "Have you seen anything near the ruins?",
+    dialogueProvider: async () => {
+      modelCalls += 1;
+      return { speech: "I have not seen anything near the ruins.", actions: [] };
+    },
+    speak: async (request) => ({ characterId: request.characterId, status: "played" })
+  });
+
+  assert.equal(modelCalls, 1);
+  assert.equal(output.turn.materialReceipt, null);
+  assert.equal(output.turn.speech, "I have not seen anything near the ruins.");
 });
 
 test("a same-NPC follow-up receives bounded memory and reuses canonical topic context", async () => {
@@ -201,14 +232,16 @@ test("a same-NPC follow-up receives bounded memory and reuses canonical topic co
     playerText: "Tell me about your daughter.",
     dialogueProvider,
     speak,
-    memoryStore
+    memoryStore,
+    preparedMaterialCatalog: null
   });
   const followUp = await runTargetConversation({
     target,
     playerText: "How do you feel about that?",
     dialogueProvider,
     speak,
-    memoryStore
+    memoryStore,
+    preparedMaterialCatalog: null
   });
 
   assert.equal(requests[1].conversationContext.turns.length, 1);

@@ -150,6 +150,18 @@ structured contract, but it added unsupported details; the structured turn took
 only with a current model, an entailment-aware evaluation corpus, and latency
 that survives the in-game acceptance gate.
 
+EXP-020 then rejected Qwen3 4B Instruct 2507 as a live replacement: it used the
+daughter fact more successfully than the matched 1.7B control, but its warm
+grounded turn took 39.90 seconds and still embellished unsupported clauses.
+
+EXP-021 implements the resulting two-speed hypothesis. Qwen3 4B-assisted draft
+material was reduced to three variants tied to the exact `profile.family` key
+and admitted through an approval-bearing catalogue. A local control completed
+in 2.496798 ms wall time and 0.218622 ms runtime dialogue latency with zero live
+model calls, tokens, attempts, or provider cost. Unknown and unmatched questions
+retain the routed live-model path. In-game latency and player-perceived quality
+remain unverified.
+
 ## Milestone 5 — transfer experiment
 
 Adapt the runtime to Fallout 3 or New Vegas. Record runtime reuse, adapter-only

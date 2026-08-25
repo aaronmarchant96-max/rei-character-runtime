@@ -730,3 +730,41 @@ the candidate as a live-route replacement. It remains an ignored local research
 asset. The next product hypothesis is a two-speed character system: keep the
 player-facing path bounded and immediate, while stronger models prepare or
 refresh reviewable character material outside the player's wait path.
+
+## EXP-021 — two-speed prepared character material
+
+- Date: 2026-08-24
+- Generator model: `Qwen/Qwen3-4B-Instruct-2507`
+- Source fact: `profile.family`
+- Retrieval intent: `family-daughter`
+- Material: three bounded variants under `nels-family-v1`
+- Approval mode: `agent-reviewed-against-fact-keys`
+- Voice: measurement stub; synthesis and playback intentionally excluded
+- Final verification: 53 tests passed; native key-map compile test passed
+
+EXP-020 produced expressive daughter answers but added unsupported traits and
+coping behavior. For this control, those clauses were removed and the surviving
+material was reduced to variants that state only that Olga was Nels's daughter
+and died when bandits attacked their village. The runtime admits the material
+only when profile ID, retrieval intent, and exact ordered fact keys match.
+
+One local turn used the production target/profile/runtime boundary with a voice
+stub and a dialogue provider that would throw if called:
+
+- Question: `Tell me about your daughter.`
+- Response: `Olga was my daughter. She died when bandits attacked our village.`
+- Wall time: 2.4967979999999983 ms
+- Runtime dialogue latency: 0.21862200000000342 ms
+- Live model calls: 0
+- Input/output tokens: 0 / 0
+- Provider API cost: $0
+- Model attempts: 0
+- Grounding status: passed
+- Selected variant: 0 of 3
+- Proposed/executed actions: 0 / 0
+
+Tests also verify that unapproved, ambiguous, malformed, or fact-key-mismatched
+material is rejected and that an unmatched Nels question still calls the live
+dialogue provider. This establishes the first two-speed contract for one fact;
+it does not establish in-game latency, player preference, semantic validation
+automation, or coverage beyond this Nels retrieval.

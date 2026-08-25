@@ -5,6 +5,10 @@ import {
   resolveOblivionProfile,
   selectProfileFacts
 } from "./oblivion-profiles.js";
+import {
+  OBLIVION_PREPARED_MATERIAL_CATALOG,
+  selectPreparedMaterial
+} from "./prepared-material.js";
 import { parseTargetEnvelope } from "./target.js";
 
 function normalizeTarget(target) {
@@ -30,7 +34,8 @@ export async function runTargetConversation({
   dialogueProvider,
   speak,
   memoryStore = null,
-  profileCatalog = OBLIVION_PROFILE_CATALOG
+  profileCatalog = OBLIVION_PROFILE_CATALOG,
+  preparedMaterialCatalog = OBLIVION_PREPARED_MATERIAL_CATALOG
 }) {
   if (typeof speak !== "function") throw new TypeError("speak must be a function");
   const normalizedTarget = normalizeTarget(target);
@@ -60,13 +65,23 @@ export async function runTargetConversation({
     world["game.locationName"] = normalizedTarget.locationName;
   }
   Object.assign(world, selectedProfile.facts);
-  const turn = await converse({
+  const preparedMaterial = selectPreparedMaterial({
+    catalog: preparedMaterialCatalog,
+    profile,
+    retrieval: selectedProfile.retrieval,
+    turnCount: conversationContext.relationship.turnCount
+  });
+  const effectiveConverse = preparedMaterial
+    ? createCharacterRuntime({ dialogueProvider: async () => preparedMaterial.proposal })
+    : converse;
+  const turn = await effectiveConverse({
     character,
     playerText,
     world,
     conversationContext,
     retrievedFactKeys: selectedProfile.retrieval?.factKeys ?? []
   });
+  turn.materialReceipt = preparedMaterial?.receipt ?? null;
   turn.profileReceipt = profile
     ? {
         catalogId: profileCatalog.catalogId,

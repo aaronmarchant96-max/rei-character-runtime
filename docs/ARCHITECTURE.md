@@ -37,9 +37,11 @@ action is data; it is never proof that the action is permitted.
 - `src/oblivion-profiles.js` validates a bounded, provenance-bearing overlay
   keyed by exact Form ID and game-derived name. It supplies paraphrased facts
   and an explicitly policy-labelled Piper model; a mismatch returns no overlay.
-  Reviewed trigger phrases select the smallest relevant fact subset; they do
-  not contain response scripts. Ollama generates the first-person wording and
-  must cite only the explicitly permitted retrieved keys.
+  Reviewed trigger phrases select the smallest relevant fact subset.
+- `src/prepared-material.js` validates approved, model-assisted speech variants
+  against one exact profile, retrieval intent, and ordered fact-key set. An
+  exact match can answer without a live model call; every mismatch retains the
+  existing routed provider. Generator output cannot approve itself.
 - `src/bridge.js` validates and atomically publishes a bounded text response for
   a game adapter.
 - `src/session.js` validates target knowledge, identity continuity, human
@@ -165,7 +167,11 @@ The next adapter increments remain:
 
 ## Dynamic character modes
 
-The current dialogue boundary distinguishes three modes before generation:
+The current dialogue boundary distinguishes a prepared path and three live
+generation modes:
+
+- `prepared`: an approved profile/intent/fact-key match rotates through bounded
+  reviewed variants with zero live-model tokens or attempts.
 
 - `social`: greetings and casual exchanges use persona for style without
   requiring a factual citation or inventing world events.
@@ -174,8 +180,9 @@ The current dialogue boundary distinguishes three modes before generation:
 - `unknown`: unsupported factual questions must express uncertainty and cite
   nothing.
 
-The live runner currently maps social and unknown turns to `qwen3:0.6b` and
-grounded turns to `qwen3:1.7b`. Model output remains untrusted in every mode.
+When no prepared match exists, the live runner maps social and unknown turns to
+`qwen3:0.6b` and grounded turns to `qwen3:1.7b`. Model output remains untrusted
+in every live generation mode.
 
 ## Bounded memory boundary
 
@@ -210,3 +217,6 @@ supplied fact keys it used, explicit uncertainty, human decision authority, and
 the absence of model action authority. Voice playback additionally records
 backend, model where applicable, status, and measured synthesis-plus-playback
 latency.
+Prepared turns additionally record catalogue and material IDs, exact fact keys,
+variant index/count, generator model, approval mode/date, zero provider cost,
+zero model tokens, and zero live-model attempts.

@@ -73,6 +73,7 @@ test("spoken-turn record requires identity continuity and no actions", () => {
     actionAuthority: "none"
   });
   assert.equal(record.profileReceipt, null);
+  assert.equal(record.materialReceipt, null);
 
   const mismatched = validTurn();
   mismatched.voiceReceipt.characterId = "oblivion-2009:DEADBEEF";

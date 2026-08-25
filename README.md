@@ -211,9 +211,11 @@ can enter a later prompt; canonical facts remain a separate evidence layer.
 flowchart TD
     A[Game Adapter] -->|Provides| B[Character Context]
     B --> C[REI Route]
-    C --> D[Dialogue Provider]
-    D --> E[TTS Adapter]
+    C --> H{Approved material?}
+    H -->|No exact match| D[Dialogue Provider]
+    H -->|Exact match| F
     D --> F[Validated Envelope + Receipt]
+    F --> E[TTS Adapter]
     F --> G[Allow-Listed Actions]
     G --> A
 ```
@@ -233,6 +235,7 @@ Planned adapters:
 - [Experiment log](docs/EXPERIMENT_LOG.md) — measured facts and observations
 - [Activity ledger](docs/ACTIVITY_LEDGER.md) — effort converted into capability
 - [Augmentation design](docs/AUGMENTATION_SYSTEM.md) — human control and A/B/C improvement model
+- [Character material pipeline](docs/CHARACTER_MATERIAL_PIPELINE.md) — reviewed preparation and immediate delivery
 - [Voice and rights](docs/VOICE_AND_RIGHTS.md) — licensing and consent boundaries
 
 ## Boundaries
@@ -247,5 +250,7 @@ Planned adapters:
 
 Experimental pre-alpha. One live typed conversation loop is verified in original
 Oblivion. One exact NPC has a locally tested knowledge and voice profile;
-in-game confirmation of that new overlay, broader NPC coverage, spatial audio,
-lip synchronization, richer relationship state, and actions remain incomplete.
+one reviewed fact now has three prepared variants that require no live model
+call. In-game confirmation of that two-speed path, broader NPC coverage, spatial
+audio, lip synchronization, richer relationship state, and actions remain
+incomplete.
