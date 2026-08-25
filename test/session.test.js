@@ -72,6 +72,7 @@ test("spoken-turn record requires identity continuity and no actions", () => {
     humanControl: "player-decides",
     actionAuthority: "none"
   });
+  assert.equal(record.profileReceipt, null);
 
   const mismatched = validTurn();
   mismatched.voiceReceipt.characterId = "oblivion-2009:DEADBEEF";
@@ -86,6 +87,23 @@ test("spoken-turn record requires identity continuity and no actions", () => {
     () => createSpokenTurnRecord({ target, question: "Who are you?", turn: actionable }),
     /must not contain actions/u
   );
+});
+
+test("knowledge description exposes a matched profile without claiming dialogue import", () => {
+  const description = describeTargetKnowledge({
+    schemaVersion: 2,
+    game: "oblivion-2009",
+    referenceFormId: "00028B76",
+    actorKind: "npc",
+    displayName: "Nels the Naughty",
+    locationFormId: "00027D53",
+    locationName: "Summitmist Manor"
+  });
+
+  assert.equal(description.knownFacts.profileId, "oblivion:nels-the-naughty");
+  assert.equal(description.knownFacts.profileFactKeys.includes("profile.origin"), true);
+  assert.equal(description.unknownFacts.includes("canonicalBiography"), false);
+  assert.equal(description.unknownFacts.includes("canonicalDialogue"), true);
 });
 
 test("session evidence appends one JSON record per line", async () => {

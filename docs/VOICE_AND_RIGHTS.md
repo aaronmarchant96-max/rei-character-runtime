@@ -9,6 +9,7 @@ This is an engineering record, not legal advice.
 | Speech Dispatcher | Basic local playback control | External operating-system component |
 | Piper 1.7.0 | Optional neural TTS engine | External GPL-3.0-or-later installation |
 | `en_US-lessac-medium` | Current local voice model | Downloaded locally; excluded from Git |
+| `en_US-ryan-medium` | Nels prototype voice | Downloaded locally; excluded from Git; source dataset is CC BY-NC-SA 4.0 |
 | REI Character Runtime | Orchestration and evidence code | MIT-licensed repository |
 
 The Piper model card identifies English (United States), one speaker, medium
@@ -31,6 +32,12 @@ dataset, performer consent, model terms, and intended distribution.
 Local experimentation and public distribution are different risk surfaces. A
 voice that is acceptable for a private technical experiment is not automatically
 cleared for a downloadable mod, commercial workflow, hosted service, or demo reel.
+
+The Nels registry entry therefore records
+`local-noncommercial-prototype`. It is a voice-selection experiment, not a
+rights clearance. The model card reports a RyanSpeech source dataset under CC
+BY-NC-SA 4.0 and fine-tuning from Lessac. The runtime records the selected model
+in the voice receipt while the model and configuration remain ignored locally.
 
 Before distribution, complete a voice manifest with:
 

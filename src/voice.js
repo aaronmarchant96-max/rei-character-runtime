@@ -4,6 +4,9 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 
+const DEFAULT_PIPER_VOICE = "en_US-lessac-medium";
+const VOICE_ID_PATTERN = /^[A-Za-z0-9_-]{1,80}$/u;
+
 function requireTtsRequest(request) {
   if (typeof request?.characterId !== "string" || request.characterId.trim() === "") {
     throw new TypeError("ttsRequest.characterId must be a non-empty string");
@@ -11,7 +14,11 @@ function requireTtsRequest(request) {
   if (typeof request?.text !== "string" || request.text.trim() === "") {
     throw new TypeError("ttsRequest.text must be a non-empty string");
   }
-  return { characterId: request.characterId.trim(), text: request.text.trim() };
+  const voiceId = request.voiceId == null ? null : String(request.voiceId).trim();
+  if (voiceId && !VOICE_ID_PATTERN.test(voiceId)) {
+    throw new TypeError("ttsRequest.voiceId has an invalid format");
+  }
+  return { characterId: request.characterId.trim(), text: request.text.trim(), voiceId };
 }
 
 function runSpeechDispatcher(text, callback) {
@@ -66,6 +73,7 @@ export async function speakPiperTtsRequest(
   } = {}
 ) {
   const validated = requireTtsRequest(request);
+  const model = validated.voiceId || DEFAULT_PIPER_VOICE;
   const workDirectory = await mkdtemp(join(temporaryRoot, "rei-voice-"));
   const outputPath = join(workDirectory, "speech.wav");
   const started = clock.now();
@@ -76,7 +84,7 @@ export async function speakPiperTtsRequest(
       [
         "-m", "piper",
         "--data-dir", modelDirectory,
-        "-m", "en_US-lessac-medium",
+        "-m", model,
         "-f", outputPath,
         "--", validated.text
       ],
@@ -87,7 +95,7 @@ export async function speakPiperTtsRequest(
     return {
       characterId: validated.characterId,
       backend: "piper-local",
-      model: "en_US-lessac-medium",
+      model,
       status: "played",
       latencyMs: Math.max(0, clock.now() - started),
       measurementMode: "measured"

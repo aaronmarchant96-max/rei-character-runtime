@@ -32,6 +32,9 @@ action is data; it is never proof that the action is permitted.
   and emits the response and evidence receipt.
 - `src/voice.js` validates TTS requests and delegates playback to an external
   local backend.
+- `src/oblivion-profiles.js` validates a bounded, provenance-bearing overlay
+  keyed by exact Form ID and game-derived name. It supplies paraphrased facts
+  and an explicitly policy-labelled Piper model; a mismatch returns no overlay.
 - `src/bridge.js` validates and atomically publishes a bounded text response for
   a game adapter.
 - `src/session.js` validates target knowledge, identity continuity, human
@@ -145,7 +148,8 @@ Verified in EXP-014:
 The next adapter increments remain:
 
 1. Add additional allow-listed actor/world facts behind explicit measurements.
-2. Add an explicit rights-safe NPC voice-selection registry.
+2. Expand the explicit voice-selection registry only with reviewed model cards
+   and policies appropriate to each intended use.
 3. Replace the proof message box with an NPC-associated subtitle.
 4. Associate the external voice turn with the in-game NPC before attempting
    spatial engine audio.

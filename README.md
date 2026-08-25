@@ -16,7 +16,8 @@ question in game, and press Enter. The xOBSE bridge exports the exact target and
 question; the external runtime validates identity, routes to local Ollama,
 grounds the answer, speaks it through Piper, records measured receipts, and
 returns the response to an in-game message box. Audio is still desktop playback
-through one generic Piper voice, not an NPC-specific or spatial game voice.
+through Piper. One exact NPC profile now selects a distinct local prototype
+voice; audio is still desktop playback rather than spatial game audio.
 The default demo remains deterministic and offline; the optional
 `--dialogue=ollama` workflow calls a local dialogue-model provider.
 
@@ -43,14 +44,15 @@ python3 -m venv .venv
 .venv/bin/pip install piper-tts
 mkdir -p .local/voices
 .venv/bin/python3 -m piper.download_voices \
-  --data-dir .local/voices en_US-lessac-medium
+  --data-dir .local/voices en_US-lessac-medium en_US-ryan-medium
 npm run voice:neural -- "Have you seen anything near the ruins?"
 ```
 
 The selected model and its metadata remain local and are excluded from Git.
 Its model card identifies the source dataset and training provenance. Treat
-commercial voice rights as a separate clearance question; this prototype does
-not clone a Bethesda performer.
+commercial voice rights as a separate clearance question. Ryan's source
+dataset is CC BY-NC-SA 4.0, so EchoForge marks that voice local noncommercial
+prototype only. This prototype does not clone a Bethesda performer.
 
 ### Optional local dynamic dialogue
 
@@ -162,7 +164,10 @@ the computer, not from the NPC's in-game position. See EXP-011.
 With schema v2, game-derived target names and locations become allow-listed
 dialogue facts. In EXP-013, selecting `Nels the Naughty` inside `Summitmist
 Manor` produced a grounded response that used those exact facts without
-importing biography or canonical dialogue.
+importing canonical dialogue. A strict profile overlay now matches only Nels's
+exact Form ID and game-derived name, adds five short sourced fact paraphrases,
+and selects `en_US-ryan-medium`. Unknown or mismatched actors retain the generic
+facts and default voice.
 
 For a repeatable human-controlled loop, use one command:
 
@@ -227,5 +232,6 @@ Planned adapters:
 ## Status
 
 Experimental pre-alpha. One live typed conversation loop is verified in original
-Oblivion. NPC-specific voice selection, canonical personality/lore retrieval,
-spatial audio, lip synchronization, memory, and actions remain incomplete.
+Oblivion. One exact NPC has a locally tested knowledge and voice profile;
+in-game confirmation of that new overlay, broader NPC coverage, spatial audio,
+lip synchronization, memory, and actions remain incomplete.

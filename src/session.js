@@ -1,5 +1,6 @@
 import { appendFile, mkdir } from "node:fs/promises";
 import { dirname, isAbsolute } from "node:path";
+import { resolveOblivionProfile } from "./oblivion-profiles.js";
 import { parseTargetEnvelope } from "./target.js";
 
 function normalizeQuestion(value) {
@@ -20,6 +21,7 @@ function normalizeTarget(target) {
 
 export function describeTargetKnowledge(target) {
   const normalized = normalizeTarget(target);
+  const profile = resolveOblivionProfile(normalized);
   const knownFacts = {
     game: normalized.game,
     referenceFormId: normalized.referenceFormId,
@@ -31,7 +33,13 @@ export function describeTargetKnowledge(target) {
   if (normalized.locationFormId) knownFacts.locationFormId = normalized.locationFormId;
   if (normalized.locationName) knownFacts.locationName = normalized.locationName;
   else unknownFacts.push("currentLocation");
-  unknownFacts.push("canonicalBiography", "canonicalDialogue");
+  if (profile) {
+    knownFacts.profileId = profile.profileId;
+    knownFacts.profileFactKeys = Object.keys(profile.facts);
+  } else {
+    unknownFacts.push("canonicalBiography");
+  }
+  unknownFacts.push("canonicalDialogue");
   return {
     knownFacts,
     unknownFacts
@@ -68,6 +76,7 @@ export function createSpokenTurnRecord({ target, question, turn }) {
     augmentation: turn.augmentation,
     dialogueReceipt: turn?.dialogueReceipt ?? null,
     routeReceipt: turn?.receipt ?? null,
+    profileReceipt: turn?.profileReceipt ?? null,
     voiceReceipt: turn?.voiceReceipt ?? null,
     proposedActions: [],
     executedActions: []

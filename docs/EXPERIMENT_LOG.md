@@ -445,3 +445,34 @@ JSONL record preserved exact target, question, response, grounding, routing,
 voice, byte-count, and hash receipts. This verifies the first complete live
 typed conversation loop. It does not verify an NPC-specific voice, spatial
 audio, canonical personality or lore, lip sync, persistent memory, or actions.
+
+## EXP-015 — exact Nels profile selects grounded lore and distinct voice
+
+- Date: 2026-08-24
+- Profile match: Form ID `00028B76` plus name `Nels the Naughty`
+- Profile facts: 5 short secondary-source paraphrases; no dialogue lines
+- Question: `Where are you from?`
+- Response: `I am from a small village in Skyrim.`
+- Used fact key: `profile.origin`
+- Dialogue provider/model: `ollama-local` / `qwen3:1.7b`
+- Input/output tokens: 639 / 88 across two attempts
+- Dialogue duration: 13,010.098936 ms
+- Runtime turn latency: 13,050.450527 ms
+- Grounding: passed after one `irrelevant-fact-citation` rejection
+- Provider API cost: $0
+- Selected voice: `en_US-ryan-medium`
+- Voice policy: `local-noncommercial-prototype`
+- Voice model SHA-256:
+  `abf4c274862564ed647ba0d2c47f8ee7c9b717d27bdad9219100eb310db4047a`
+- Generated WAV: 91,180 bytes; SHA-256
+  `344279144a0813bced7aee929969d3798e2e8494f425e6ca739dda884b37aab6`
+- Verification: 41 tests passed; native key-map compile test passed
+- Mode: model file, synthesis artifact, dialogue, routing, grounding, and test
+  values measured locally; lore facts are labelled secondary-source paraphrase
+
+The model card identifies RyanSpeech under CC BY-NC-SA 4.0 and says the model
+was fine-tuned from Lessac. The voice is therefore kept out of Git and is not
+treated as commercially cleared. The model response and WAV synthesis were
+verified locally, but playback was intentionally skipped in this control. A
+live in-game audible turn is still required before claiming the new profile and
+voice were heard in Oblivion.

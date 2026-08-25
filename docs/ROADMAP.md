@@ -97,6 +97,12 @@ playback and the returned in-game response were human-confirmed. Voice remains
 one generic desktop model rather than NPC-specific or spatial audio, so this
 milestone remains partial.
 
+EXP-015 adds the first exact NPC-to-voice selection in the external runtime:
+Nels maps to `en_US-ryan-medium`, while all unknown or mismatched actors retain
+the default. Local synthesis is verified, but live audible confirmation and
+spatial attachment remain outstanding. The selected model is noncommercial
+prototype-only, not distribution-cleared.
+
 ## Milestone 4 — memory and world state
 
 Claim: bounded retrieved memories and allow-listed game facts improve character
@@ -107,6 +113,11 @@ Status: first allow-listed game facts verified in EXP-013. This does not yet
 measure memory or consistency across a corpus. EXP-014 demonstrated the current
 boundary clearly: location was answered from exported facts, while an unsupported
 preference question fell back rather than inventing a personality.
+
+EXP-015 adds five provenance-labelled paraphrased facts for one exact Nels
+identity. A local origin question passed the grounding gate using only
+`profile.origin`; unsupported questions still use the existing uncertainty
+path. This is one control, not a broad character-quality result.
 
 ## Milestone 5 — transfer experiment
 

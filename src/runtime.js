@@ -68,6 +68,7 @@ export function createCharacterRuntime({ dialogueProvider, clock = performance }
   return async function converse({ character, playerText, world = {} }) {
     const id = requireText(character?.id, "character.id");
     const name = requireText(character?.name, "character.name");
+    const voiceId = character?.voiceId == null ? null : requireText(character.voiceId, "character.voiceId");
     const input = requireText(playerText, "playerText");
     const routeDecision = chooseRoute(input);
     const started = clock.now();
@@ -88,7 +89,11 @@ export function createCharacterRuntime({ dialogueProvider, clock = performance }
       proposedActions,
       executedActions: [],
       augmentation: normalizeAugmentation(proposal?.augmentation),
-      ttsRequest: { characterId: id, text: speech },
+      ttsRequest: {
+        characterId: id,
+        text: speech,
+        ...(voiceId ? { voiceId } : {})
+      },
       dialogueReceipt: normalizeProviderReceipt(proposal?.providerReceipt),
       receipt: {
         characterId: id,

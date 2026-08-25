@@ -59,11 +59,13 @@ function wordTokens(value) {
 function findRelevantFactKeys(playerText, world) {
   const question = wordTokens(playerText);
   const asksWhere = /\bwhere\b/iu.test(playerText);
+  const asksOrigin = /\b(where (?:are|were|did) (?:you|he|she).*from|come from|origin|homeland)\b/iu.test(playerText);
   return Object.entries(world ?? {}).flatMap(([key, value]) => {
     const factTokens = wordTokens(`${key} ${value}`);
     const overlaps = [...factTokens].some((token) => question.has(token));
     const locationMatch = asksWhere && /location|place|cell/iu.test(key);
-    return overlaps || locationMatch ? [key] : [];
+    const originMatch = asksOrigin && /origin|home|homeland/iu.test(key);
+    return overlaps || locationMatch || originMatch ? [key] : [];
   });
 }
 

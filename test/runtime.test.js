@@ -130,6 +130,52 @@ test("Piper generates then plays neural speech with an evidence receipt", async 
   });
 });
 
+test("Piper uses a validated per-character voice and records the selected model", async () => {
+  const calls = [];
+  const receipt = await speakPiperTtsRequest(
+    { characterId: "nels", text: "I came down from Skyrim.", voiceId: "en_US-ryan-medium" },
+    {
+      pythonPath: "/test/python",
+      modelDirectory: "/test/voices",
+      runner: (command, args, callback) => {
+        calls.push({ command, args });
+        callback(null);
+      }
+    }
+  );
+
+  assert.equal(calls[0].args.includes("en_US-ryan-medium"), true);
+  assert.equal(receipt.model, "en_US-ryan-medium");
+  await assert.rejects(
+    speakPiperTtsRequest(
+      { characterId: "nels", text: "No.", voiceId: "../../unsafe" },
+      { runner: () => assert.fail("invalid voice must not execute") }
+    ),
+    /voiceId has an invalid format/u
+  );
+});
+
+test("runtime carries a configured voice into the TTS request", async () => {
+  const converse = createCharacterRuntime({
+    dialogueProvider: async () => ({ speech: "Aye.", actions: [] })
+  });
+  const result = await converse({
+    character: {
+      id: "oblivion-2009:00028B76",
+      name: "Nels the Naughty",
+      persona: "A Nord",
+      voiceId: "en_US-ryan-medium"
+    },
+    playerText: "Are you a Nord?"
+  });
+
+  assert.deepEqual(result.ttsRequest, {
+    characterId: "oblivion-2009:00028B76",
+    text: "Aye.",
+    voiceId: "en_US-ryan-medium"
+  });
+});
+
 test("Ollama receives bounded character facts and returns literal metrics", async () => {
   let request;
   const provider = createOllamaDialogueProvider({

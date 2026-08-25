@@ -21,6 +21,7 @@ the activity.
 | 2026-08-24 | Encode a supervised augmentation session | 27 tests; EXP-012 JSONL and live receipts | One command exposes knowns/unknowns, preserves player authority, validates dialogue, speaks it, and records evidence | Repeated actor questions can use the same inspectable workflow | verified on one external turn; in-game UI pending |
 | 2026-08-24 | Ground dialogue in live actor and location context | 28 tests; EXP-013; 184-byte schema-v2 envelope and spoken-turn receipts | Game-derived name and location cross the native boundary as allow-listed facts | Selected NPCs can answer identity/location questions without invented context | verified for one NPC/interior cell; broader corpus pending |
 | 2026-08-24 | Complete the first live Oblivion conversation loop | 34 tests; native key-map compile test; EXP-014; bridge and JSONL receipts; human confirmation | One `Y` press now connects aimed actor, typed question, local grounded dialogue, Piper speech, and returned in-game text | Same evidence-bearing loop can now host voice-selection and knowledge experiments | verified for two questions; generic voice and sparse facts remain |
+| 2026-08-24 | Add the first strict NPC profile and voice mapping | 41 tests; EXP-015; local Ollama and Piper controls | Exact Form ID plus game-derived name can select bounded sourced facts and a policy-labelled voice without relaxing fallback | Additional NPCs can be added as reviewed data entries instead of runtime exceptions | locally verified for Nels; live audible confirmation pending |
 
 ## Decision ledger
 

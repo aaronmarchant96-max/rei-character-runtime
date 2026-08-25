@@ -67,3 +67,72 @@ test("target conversation rejects unsupported target data before dialogue", asyn
   );
   assert.equal(called, false);
 });
+
+test("profiled Nels receives bounded facts and his configured prototype voice", async () => {
+  let dialogueRequest;
+  let voiceRequest;
+  const output = await runTargetConversation({
+    target: {
+      schemaVersion: 2,
+      game: "oblivion-2009",
+      referenceFormId: "00028B76",
+      actorKind: "npc",
+      displayName: "Nels the Naughty",
+      locationFormId: "00027D53",
+      locationName: "Summitmist Manor"
+    },
+    playerText: "Where are you from?",
+    dialogueProvider: async (request) => {
+      dialogueRequest = request;
+      return { speech: "I come from a small village in Skyrim.", actions: [] };
+    },
+    speak: async (request) => {
+      voiceRequest = request;
+      return {
+        characterId: request.characterId,
+        backend: "test-voice",
+        model: request.voiceId,
+        status: "played",
+        latencyMs: 1,
+        measurementMode: "measured"
+      };
+    }
+  });
+
+  assert.match(dialogueRequest.character.persona, /Nord/u);
+  assert.equal(dialogueRequest.world["profile.origin"], "Nels comes from a small village in Skyrim.");
+  assert.equal(dialogueRequest.world["profile.ambition"].includes("Hoary Boar"), true);
+  assert.equal(voiceRequest.voiceId, "en_US-ryan-medium");
+  assert.equal(output.turn.profileReceipt.profileId, "oblivion:nels-the-naughty");
+  assert.equal(output.turn.profileReceipt.voiceUsePolicy, "local-noncommercial-prototype");
+  assert.equal(output.turn.profileReceipt.factKeys.length, 5);
+});
+
+test("a mismatched target name keeps the generic facts and voice", async () => {
+  let dialogueRequest;
+  let voiceRequest;
+  const output = await runTargetConversation({
+    target: {
+      schemaVersion: 2,
+      game: "oblivion-2009",
+      referenceFormId: "00028B76",
+      actorKind: "npc",
+      displayName: "Different NPC",
+      locationFormId: null,
+      locationName: null
+    },
+    playerText: "Hello",
+    dialogueProvider: async (request) => {
+      dialogueRequest = request;
+      return { speech: "Hello.", actions: [] };
+    },
+    speak: async (request) => {
+      voiceRequest = request;
+      return { status: "played" };
+    }
+  });
+
+  assert.equal(dialogueRequest.world["profile.origin"], undefined);
+  assert.equal(voiceRequest.voiceId, undefined);
+  assert.equal(output.turn.profileReceipt.match, "generic-fallback");
+});
