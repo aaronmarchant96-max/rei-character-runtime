@@ -159,8 +159,10 @@ material was reduced to three variants tied to the exact `profile.family` key
 and admitted through an approval-bearing catalogue. A local control completed
 in 2.496798 ms wall time and 0.218622 ms runtime dialogue latency with zero live
 model calls, tokens, attempts, or provider cost. Unknown and unmatched questions
-retain the routed live-model path. In-game latency and player-perceived quality
-remain unverified.
+retain the routed live-model path. One subsequent human-confirmed Oblivion turn
+matched exact Nels identity, returned the prepared daughter response at 0.174 ms
+dialogue latency, played Piper in 6.405 seconds, and displayed the response in
+game. Broader coverage and player-perceived quality remain unverified.
 
 ## Milestone 5 — transfer experiment
 

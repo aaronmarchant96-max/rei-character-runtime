@@ -251,6 +251,6 @@ Planned adapters:
 Experimental pre-alpha. One live typed conversation loop is verified in original
 Oblivion. One exact NPC has a locally tested knowledge and voice profile;
 one reviewed fact now has three prepared variants that require no live model
-call. In-game confirmation of that two-speed path, broader NPC coverage, spatial
-audio, lip synchronization, richer relationship state, and actions remain
-incomplete.
+call. One Nels daughter turn has confirmed that two-speed path in game; broader
+NPC coverage, spatial audio, lip synchronization, richer relationship state,
+and actions remain incomplete.

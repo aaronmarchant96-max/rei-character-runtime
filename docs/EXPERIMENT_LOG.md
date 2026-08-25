@@ -766,5 +766,29 @@ stub and a dialogue provider that would throw if called:
 Tests also verify that unapproved, ambiguous, malformed, or fact-key-mismatched
 material is rejected and that an unmatched Nels question still calls the live
 dialogue provider. This establishes the first two-speed contract for one fact;
-it does not establish in-game latency, player preference, semantic validation
-automation, or coverage beyond this Nels retrieval.
+it does not establish player preference, semantic validation automation, or
+coverage beyond this Nels retrieval.
+
+### Live Oblivion acceptance
+
+The project owner then aimed at Nels and entered the same question through the
+in-game `Y` editor. A screenshot confirmed the response appeared in Oblivion,
+and the append-only session record reported:
+
+- Recorded at: `2026-08-25T03:00:08.896Z`
+- Character ID: `oblivion-2009:00028B76`
+- Dialogue latency: 0.17371700002695434 ms
+- Live model calls, tokens, attempts, and provider cost: 0
+- Material: `nels-family-v1`, variant 0 of 3
+- Retrieved/used fact key: `profile.family`
+- Piper: `played` with `en_GB-northern_english_male-medium`
+- Piper synthesis-plus-playback latency: 6,404.861363000004 ms
+- Returned response: 65 bytes
+- Response SHA-256:
+  `d72c95098e5a4338aef7826718a1587bd7d7890d07538b34406ea79497d3b888`
+
+An immediately preceding attempt targeted an `Everscamp`, so the exact-profile
+gate correctly withheld Nels's prepared material and used the generic creature
+path. Together, the two turns verify both live admission and live rejection for
+one observed target each. The dominant remaining delay on the admitted turn was
+voice synthesis and playback, not dialogue preparation.
