@@ -253,7 +253,7 @@ Oblivion. One exact NPC has a locally tested knowledge and voice profile;
 one reviewed fact now has three prepared variants that require no live model
 call. One Nels daughter turn has confirmed that two-speed path in game; broader
 NPC coverage, spatial audio, lip synchronization, richer relationship state,
-and live actions remain incomplete. A deterministic offline policy contract now
-accepts or denies an explicitly identified one-item pickup while retaining an
-empty execution list; the Oblivion bridge does not yet identify items or mutate
-the game.
+and live actions remain incomplete. A deterministic pickup policy and a
+version-pinned native `U`-then-`I` candidate now identify an NPC and ingredient,
+apply fixed safety checks, and emit an action receipt. The candidate compiles
+but remains unverified in game; no successful action claim is made yet.

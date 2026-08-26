@@ -218,11 +218,14 @@ ID, exact item Form ID, and a complete safety snapshot, the pure policy gate can
 approve or deny a one-item pickup proposal. Both outcomes retain an empty
 `executedActions` list.
 
-The live Oblivion bridge still exports only an actor target and still executes
-no action. A later native increment must explicitly identify the item and
-export the required safety facts; natural-language references such as “that
-apple” must never be resolved by model guesswork. Actual inventory mutation is
-a separate adapter milestone with its own live acceptance test.
+The native Oblivion bridge now has an experimental explicit second-target path:
+`U` links the exact NPC and `I` selects the crosshair ingredient. Before normal
+Oblivion activation is dispatched, the adapter re-resolves the NPC Form ID and
+checks actor availability/combat state, exact item type, same-cell distance,
+quest/protected flags, reference availability, and ownership/off-limits state.
+It writes an atomic action receipt. This path has compiled but has not yet been
+live-verified, so no successful pickup claim is made. Natural-language
+references such as “that apple” are still never resolved by model guesswork.
 
 ## Evidence receipt contract
 

@@ -1,6 +1,7 @@
 #include <windows.h>
 
 #include <cstdint>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 
@@ -25,6 +26,7 @@ constexpr UInt32 kDisplayDelayFrames = 120;
 constexpr std::uint16_t kF10ScanCode = 0x44;
 constexpr std::uint16_t kUScanCode = 0x16;
 constexpr std::uint16_t kYScanCode = 0x15;
+constexpr std::uint16_t kIScanCode = 0x17;
 constexpr std::uint16_t kEnterScanCode = 0x1C;
 constexpr std::uint16_t kEscapeScanCode = 0x01;
 constexpr std::uintptr_t kHudInfoMenuPointerAddress = 0x00B3B33C;
@@ -33,6 +35,7 @@ constexpr std::size_t kFormTypeOffset = 0x04;
 constexpr std::size_t kFormIdOffset = 0x0C;
 constexpr std::size_t kReferenceBaseFormOffset = 0x1C;
 constexpr std::size_t kReferenceParentCellOffset = 0x40;
+constexpr std::size_t kReferencePositionOffset = 0x2C;
 constexpr std::size_t kActorBaseFullNameDataOffset = 0xA4;
 constexpr std::size_t kActorBaseFullNameLengthOffset = 0xA8;
 constexpr std::size_t kCellFullNameDataOffset = 0x1C;
@@ -42,6 +45,18 @@ constexpr std::size_t kMaxGameTextBytes = 80;
 constexpr std::size_t kMaxQuestionBytes = 240;
 constexpr std::uint8_t kNpcFormType = 0x23;
 constexpr std::uint8_t kCreatureFormType = 0x24;
+constexpr std::uint8_t kIngredientFormType = 0x19;
+constexpr UInt32 kFormQuestItemFlag = 0x00000400;
+constexpr UInt32 kReferenceDisabledFlag = 0x00000800;
+constexpr UInt32 kReferenceTakenFlags = 0x00000022;
+constexpr float kMaximumPickupDistanceUnits = 500.0F;
+constexpr std::uintptr_t kLookupFormByIdAddress = 0x0046B250;
+constexpr std::uintptr_t kIsOffLimitsToPlayerAddress = 0x004DEBF0;
+constexpr std::size_t kActivateActionVirtualIndex = 0x32;
+constexpr std::size_t kActorIsDeadVirtualIndex = 0x7E;
+constexpr std::size_t kActorGetKnockedStateVirtualIndex = 0x67;
+constexpr std::size_t kActorIsParalyzedVirtualIndex = 0x69;
+constexpr std::size_t kActorIsInCombatVirtualIndex = 0xCD;
 
 struct BoundedGameText {
   char value[kMaxGameTextBytes + 1];
@@ -123,12 +138,14 @@ void* g_targetHotkeyTask = nullptr;
 UInt32 g_displayDelayFrames = 0;
 bool g_activationWasPressed = false;
 bool g_talkWasPressed = false;
+bool g_actionWasPressed = false;
 bool g_inputPollingLogged = false;
 char g_oblivionRoot[MAX_PATH] = {};
 bool g_nativeQuestionActive = false;
 bool g_questionSubmitWasPressed = false;
 bool g_questionCancelWasPressed = false;
 UInt32 g_questionTargetFormId = 0;
+UInt32 g_linkedActorFormId = 0;
 FILETIME g_lastResponseWriteTime = {};
 bool g_responseWatchInitialized = false;
 char g_capturedQuestion[kMaxQuestionBytes + 1] = {};
@@ -169,6 +186,71 @@ void AppendLog(const char* message) {
     std::fprintf(file, "%s\r\n", message);
     std::fclose(file);
   }
+}
+
+bool PublishActionReceipt(
+  UInt32 actorFormId,
+  UInt32 itemReferenceFormId,
+  UInt32 itemBaseFormId,
+  const char* status,
+  const char* reason
+) {
+  char receiptPath[MAX_PATH] = {};
+  char temporaryPath[MAX_PATH] = {};
+  if (!BuildPath(
+        receiptPath,
+        sizeof(receiptPath),
+        "Data\\OBSE\\Plugins\\EchoForge\\action-receipt.json"
+      )
+      || !BuildPath(
+        temporaryPath,
+        sizeof(temporaryPath),
+        "Data\\OBSE\\Plugins\\EchoForge\\action-receipt.json.tmp"
+      )) {
+    AppendLog("action-receipt-path-too-long");
+    return false;
+  }
+  char envelope[320] = {};
+  const int written = std::snprintf(
+    envelope,
+    sizeof(envelope),
+    "{\"schemaVersion\":1,\"action\":\"pick-up-item\","
+    "\"actorReferenceFormId\":\"%08X\",\"itemReferenceFormId\":\"%08X\","
+    "\"itemBaseFormId\":\"%08X\",\"status\":\"%s\",\"reason\":\"%s\"}",
+    actorFormId,
+    itemReferenceFormId,
+    itemBaseFormId,
+    status,
+    reason
+  );
+  if (written <= 0 || static_cast<std::size_t>(written) >= sizeof(envelope)) {
+    AppendLog("action-receipt-envelope-too-large");
+    return false;
+  }
+  FILE* file = std::fopen(temporaryPath, "wb");
+  if (!file) {
+    AppendLog("action-receipt-temporary-open-failed");
+    return false;
+  }
+  const std::size_t length = static_cast<std::size_t>(written);
+  const bool wrote = std::fwrite(envelope, 1, length, file) == length
+    && std::fflush(file) == 0;
+  const bool closed = std::fclose(file) == 0;
+  if (!wrote || !closed) {
+    DeleteFileA(temporaryPath);
+    AppendLog("action-receipt-temporary-write-failed");
+    return false;
+  }
+  if (!MoveFileExA(
+        temporaryPath,
+        receiptPath,
+        MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+      )) {
+    DeleteFileA(temporaryPath);
+    AppendLog("action-receipt-atomic-replace-failed");
+    return false;
+  }
+  return true;
 }
 
 bool ReadResponse(char* output, std::size_t capacity) {
@@ -441,6 +523,94 @@ void* ReadPointerAt(void* base, std::size_t offset) {
   return *reinterpret_cast<void**>(static_cast<std::uint8_t*>(base) + offset);
 }
 
+UInt32 ReadUInt32At(void* base, std::size_t offset) {
+  if (!base) return 0;
+  return *reinterpret_cast<UInt32*>(static_cast<std::uint8_t*>(base) + offset);
+}
+
+void* LookupFormById(UInt32 formId) {
+  using LookupFormByIdFunction = void* (__cdecl*)(UInt32);
+  const auto lookup = reinterpret_cast<LookupFormByIdFunction>(kLookupFormByIdAddress);
+  return lookup(formId);
+}
+
+template <typename Function>
+Function ReadVirtualFunction(void* object, std::size_t index) {
+  if (!object) return nullptr;
+  void** table = *reinterpret_cast<void***>(object);
+  return table ? reinterpret_cast<Function>(table[index]) : nullptr;
+}
+
+bool ActorIsAvailable(void* actorReference) {
+  using IsDeadFunction = bool (__attribute__((fastcall)) *)(void* object);
+  using GetByteFunction = std::uint8_t (__attribute__((fastcall)) *)(void* object);
+  const auto isDead = ReadVirtualFunction<IsDeadFunction>(
+    actorReference,
+    kActorIsDeadVirtualIndex
+  );
+  const auto getKnockedState = ReadVirtualFunction<GetByteFunction>(
+    actorReference,
+    kActorGetKnockedStateVirtualIndex
+  );
+  const auto isParalyzed = ReadVirtualFunction<IsDeadFunction>(
+    actorReference,
+    kActorIsParalyzedVirtualIndex
+  );
+  return isDead && getKnockedState && isParalyzed
+    && !isDead(actorReference)
+    && getKnockedState(actorReference) == 0
+    && !isParalyzed(actorReference);
+}
+
+bool ActorIsInCombat(void* actorReference) {
+  using IsInCombatFunction = bool (__attribute__((fastcall)) *)(
+    void* object,
+    void* ignoredEdx,
+    bool unknown
+  );
+  const auto isInCombat = ReadVirtualFunction<IsInCombatFunction>(
+    actorReference,
+    kActorIsInCombatVirtualIndex
+  );
+  return !isInCombat || isInCombat(actorReference, nullptr, false);
+}
+
+bool ItemIsOffLimits(void* itemReference) {
+  using IsOffLimitsFunction = bool (__attribute__((fastcall)) *)(void* object);
+  const auto isOffLimits = reinterpret_cast<IsOffLimitsFunction>(
+    kIsOffLimitsToPlayerAddress
+  );
+  return isOffLimits(itemReference);
+}
+
+float ReferenceDistance(void* first, void* second) {
+  const float* firstPosition = reinterpret_cast<float*>(
+    static_cast<std::uint8_t*>(first) + kReferencePositionOffset
+  );
+  const float* secondPosition = reinterpret_cast<float*>(
+    static_cast<std::uint8_t*>(second) + kReferencePositionOffset
+  );
+  const float x = firstPosition[0] - secondPosition[0];
+  const float y = firstPosition[1] - secondPosition[1];
+  const float z = firstPosition[2] - secondPosition[2];
+  return std::sqrt((x * x) + (y * y) + (z * z));
+}
+
+bool DispatchPickup(void* itemBaseForm, void* itemReference, void* actorReference) {
+  using ActivateActionFunction = bool (__attribute__((fastcall)) *)(
+    void* object,
+    void* ignoredEdx,
+    void* activatedReference,
+    void* activatingReference,
+    UInt32 unknown
+  );
+  const auto activate = ReadVirtualFunction<ActivateActionFunction>(
+    itemBaseForm,
+    kActivateActionVirtualIndex
+  );
+  return activate && activate(itemBaseForm, nullptr, itemReference, actorReference, 0);
+}
+
 bool PublishQuestion(UInt32 formId, const char* input) {
   char normalized[kMaxQuestionBytes + 1] = {};
   std::size_t normalizedLength = 0;
@@ -625,6 +795,7 @@ void CaptureTargetQuestion() {
     AppendLog("question-target-publish-failed");
     return;
   }
+  g_linkedActorFormId = formId;
   const bool opened = g_console->RunScriptLine2(
     "OpenTextInput \"EchoForge question: | Send\" 0 240",
     nullptr,
@@ -715,6 +886,7 @@ void DisplayTargetReceipt() {
     AppendLog(ran ? "target-hotkey-export-failure-shown" : "target-hotkey-script-failed");
     return;
   }
+  g_linkedActorFormId = formId;
   char script[160] = {};
   const int written = std::snprintf(
     script,
@@ -728,6 +900,156 @@ void DisplayTargetReceipt() {
   }
   const bool ran = g_console->RunScriptLine2(script, nullptr, true);
   AppendLog(ran ? "target-hotkey-actor-receipt-ran" : "target-hotkey-script-failed");
+}
+
+void RejectPickup(
+  UInt32 itemReferenceFormId,
+  UInt32 itemBaseFormId,
+  const char* reason,
+  const char* playerMessage
+) {
+  PublishActionReceipt(
+    g_linkedActorFormId,
+    itemReferenceFormId,
+    itemBaseFormId,
+    "denied",
+    reason
+  );
+  char script[240] = {};
+  const int written = std::snprintf(
+    script,
+    sizeof(script),
+    "MessageBoxEX \"EchoForge: %s\"",
+    playerMessage
+  );
+  if (written > 0 && static_cast<std::size_t>(written) < sizeof(script)) {
+    g_console->RunScriptLine2(script, nullptr, true);
+  }
+  AppendLog(reason);
+}
+
+void AttemptPickup() {
+  if (g_linkedActorFormId == 0) {
+    RejectPickup(0, 0, "pickup-no-linked-actor", "Link an NPC with U first.");
+    return;
+  }
+
+  void* actorReference = LookupFormById(g_linkedActorFormId);
+  void* actorBaseForm = ReadPointerAt(actorReference, kReferenceBaseFormOffset);
+  const std::uint8_t actorType = actorBaseForm
+    ? *(static_cast<std::uint8_t*>(actorBaseForm) + kFormTypeOffset)
+    : 0;
+  if (!actorReference
+      || ReadUInt32At(actorReference, kFormIdOffset) != g_linkedActorFormId
+      || actorType != kNpcFormType) {
+    RejectPickup(0, 0, "pickup-linked-actor-unavailable", "Linked NPC is unavailable. Link again with U.");
+    g_linkedActorFormId = 0;
+    return;
+  }
+
+  void* hudInfoMenu = *reinterpret_cast<void**>(kHudInfoMenuPointerAddress);
+  void* itemReference = ReadPointerAt(hudInfoMenu, kHudCrosshairReferenceOffset);
+  void* itemBaseForm = ReadPointerAt(itemReference, kReferenceBaseFormOffset);
+  const UInt32 itemReferenceFormId = ReadUInt32At(itemReference, kFormIdOffset);
+  const UInt32 itemBaseFormId = ReadUInt32At(itemBaseForm, kFormIdOffset);
+  const std::uint8_t itemType = itemBaseForm
+    ? *(static_cast<std::uint8_t*>(itemBaseForm) + kFormTypeOffset)
+    : 0;
+  if (!itemReference || !itemBaseForm || itemType != kIngredientFormType) {
+    RejectPickup(
+      itemReferenceFormId,
+      itemBaseFormId,
+      "pickup-target-not-ingredient",
+      "Aim at an apple or another ordinary ingredient, then tap I."
+    );
+    return;
+  }
+
+  if (ReadPointerAt(actorReference, kReferenceParentCellOffset)
+      != ReadPointerAt(itemReference, kReferenceParentCellOffset)) {
+    RejectPickup(
+      itemReferenceFormId,
+      itemBaseFormId,
+      "pickup-target-different-cell",
+      "The linked NPC and item are not in the same cell."
+    );
+    return;
+  }
+  if (!ActorIsAvailable(actorReference)) {
+    RejectPickup(
+      itemReferenceFormId,
+      itemBaseFormId,
+      "pickup-actor-unavailable",
+      "The linked NPC cannot act right now."
+    );
+    return;
+  }
+  if (ActorIsInCombat(actorReference)) {
+    RejectPickup(
+      itemReferenceFormId,
+      itemBaseFormId,
+      "pickup-actor-in-combat",
+      "The linked NPC is in combat."
+    );
+    return;
+  }
+  const UInt32 itemFlags = ReadUInt32At(itemReference, 0x08);
+  if ((itemFlags & kReferenceDisabledFlag) != 0
+      || (itemFlags & kReferenceTakenFlags) == kReferenceTakenFlags) {
+    RejectPickup(
+      itemReferenceFormId,
+      itemBaseFormId,
+      "pickup-item-unavailable",
+      "That item is no longer available."
+    );
+    return;
+  }
+  if ((ReadUInt32At(itemBaseForm, 0x08) & kFormQuestItemFlag) != 0) {
+    RejectPickup(
+      itemReferenceFormId,
+      itemBaseFormId,
+      "pickup-protected-item",
+      "Quest or protected ingredients are not allowed."
+    );
+    return;
+  }
+  if (ItemIsOffLimits(itemReference)) {
+    RejectPickup(
+      itemReferenceFormId,
+      itemBaseFormId,
+      "pickup-owned-item",
+      "That ingredient is owned or off limits."
+    );
+    return;
+  }
+  if (ReferenceDistance(actorReference, itemReference) > kMaximumPickupDistanceUnits) {
+    RejectPickup(
+      itemReferenceFormId,
+      itemBaseFormId,
+      "pickup-item-too-far",
+      "The ingredient is too far from the linked NPC."
+    );
+    return;
+  }
+
+  const bool dispatched = DispatchPickup(itemBaseForm, itemReference, actorReference);
+  PublishActionReceipt(
+    g_linkedActorFormId,
+    itemReferenceFormId,
+    itemBaseFormId,
+    dispatched ? "dispatched" : "failed",
+    dispatched ? "pickup-normal-activation-dispatched" : "pickup-normal-activation-failed"
+  );
+  g_console->RunScriptLine2(
+    dispatched
+      ? "MessageBoxEX \"EchoForge: Pickup dispatched through normal activation.\""
+      : "MessageBoxEX \"EchoForge: Oblivion rejected the pickup.\"",
+    nullptr,
+    true
+  );
+  AppendLog(dispatched
+    ? "pickup-normal-activation-dispatched"
+    : "pickup-normal-activation-failed");
 }
 
 bool PollTargetHotkey() {
@@ -747,6 +1069,9 @@ bool PollTargetHotkey() {
   const bool talkPressed = g_input->IsKeyPressedReal(kYScanCode);
   if (talkPressed && !g_talkWasPressed) CaptureTargetQuestion();
   g_talkWasPressed = talkPressed;
+  const bool actionPressed = g_input->IsKeyPressedReal(kIScanCode);
+  if (actionPressed && !g_actionWasPressed) AttemptPickup();
+  g_actionWasPressed = actionPressed;
   return false;
 }
 
@@ -757,7 +1082,7 @@ void HandleObseMessage(MessagingInterface::Message* message) {
     if (!g_targetHotkeyTask || !g_tasks->IsTaskPresentRemovable(g_targetHotkeyTask)) {
       g_targetHotkeyTask = g_tasks->EnqueueTaskRemovable(PollTargetHotkey);
       AppendLog(g_targetHotkeyTask
-        ? "target-hotkey-enabled-f10-or-u-talk-y"
+        ? "target-hotkey-enabled-f10-or-u-talk-y-pickup-i"
         : "target-hotkey-enable-failed");
     }
     return;

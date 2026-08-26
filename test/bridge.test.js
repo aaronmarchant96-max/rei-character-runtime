@@ -58,3 +58,18 @@ test("Oblivion bridge uses xOBSE-native text input instead of an OS window", asy
   assert.match(source, /question-target-publish-failed/u);
   assert.doesNotMatch(source, /CreateWindowExA|QuestionWindowProcedure/u);
 });
+
+test("Oblivion pickup dispatch remains fixed, explicit, and fail-closed", async () => {
+  const source = await readFile("native/xobse/echoforge_bridge.cpp", "utf8");
+
+  assert.match(source, /kIScanCode/u);
+  assert.match(source, /g_linkedActorFormId/u);
+  assert.match(source, /kIngredientFormType/u);
+  assert.match(source, /kFormQuestItemFlag/u);
+  assert.match(source, /ItemIsOffLimits/u);
+  assert.match(source, /kMaximumPickupDistanceUnits/u);
+  assert.match(source, /DispatchPickup/u);
+  assert.match(source, /action-receipt\.json/u);
+  assert.match(source, /pickup-normal-activation-dispatched/u);
+  assert.doesNotMatch(source, /AddItem|RemoveItem|SetStage|ForceActorValue/u);
+});
