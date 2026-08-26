@@ -1006,3 +1006,31 @@ candidate; it cannot modify the checked-in fixture corpus. This completes a
 usable capture-classify-review-candidate-replay loop. It does not yet aggregate
 failure cohorts, generate policy proposals, or prove that repeated use improves
 response quality.
+
+## EXP-029 — evidence aggregation without policy authority
+
+- Date: 2026-08-26
+- Local verification: 73 tests passed; syntax and native checks passed; the
+  `nels-family` replay remained green
+- Corpus: 10 unique historical spoken turns; 9 NPC and 1 creature; 0 duplicate
+  interactions; 0 human reviews; 10 pending
+- Automatic receipt signals: 5 grounding fallbacks, 7 validation corrections,
+  and 2 technical-language leaks
+- Measured dialogue latency: 10 samples; median `11012.355686999857` ms; p95
+  and maximum `27104.828305000003` ms; minimum `0.03540599998086691` ms
+- Measured voice latency: 10 samples; median `5399.213179000013` ms; p95 and
+  maximum `11576.230659000008` ms; minimum `4343.401934999973` ms
+- Mode: historical local receipts marked measured; nearest-rank percentiles;
+  no human quality verdicts and no current-route performance claim
+
+`npm run evidence:report` now emits ignored JSON and Markdown reports with
+review coverage, human flags, automatic signals, provider/route/character/
+voice cohorts, measured latency distributions, and duplicate/orphan integrity
+counts. The observed latency distribution mixes older Ollama paths with two
+prepared-material turns and therefore describes this historical corpus, not
+the current expected latency of every interaction.
+
+The report deliberately contains `policyAuthority: none` and produces no
+routing recommendation. The next policy-proposal stage must wait for enough
+human review evidence to define a denominator and must keep proposal generation
+separate from execution.

@@ -14,6 +14,7 @@
     "oblivion:session": "node scripts/run-oblivion-session.mjs",
     "oblivion:live": "node scripts/run-oblivion-live.mjs",
     "evidence:review": "node scripts/review-evidence.mjs",
+    "evidence:report": "node scripts/report-evidence.mjs",
     "evidence:replay": "node scripts/replay-evidence.mjs",
     "target:listen": "node scripts/listen-oblivion-target.mjs",
     "question:listen": "node scripts/listen-oblivion-question.mjs",

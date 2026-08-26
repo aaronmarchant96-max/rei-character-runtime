@@ -238,6 +238,18 @@ and automatic warning signals. Accepting creates an ignored candidate under
 character, relevance, safety, or other flag. Skipping records nothing, and no
 candidate enters the checked-in replay corpus automatically.
 
+Summarize the accumulated evidence without changing policy:
+
+```bash
+npm run evidence:report
+```
+
+This writes ignored JSON and Markdown reports under `.local/evidence`. The
+report keeps human rejection flags separate from automatic heuristics, states
+the reviewed/total denominator, exposes duplicate or orphan records, and
+calculates nearest-rank latency distributions from receipts explicitly marked
+`measured`. It has no routing or execution authority.
+
 ## Architecture
 
 ```mermaid

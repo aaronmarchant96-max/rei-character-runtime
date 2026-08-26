@@ -59,6 +59,9 @@ action is data; it is never proof that the action is permitted.
   accepted/rejected review records, removes reviewed turns from the pending
   queue, and promotes only an exactly matching accepted record into a local
   fixture candidate.
+- `src/evidence-report.js` aggregates unique interactions, latest matched human
+  reviews, automatic signals, cohorts, integrity exceptions, and measured
+  latency distributions. Its output explicitly has no policy authority.
 - `src/memory.js` isolates memory by exact character ID, atomically retains the
   last 24 successful turns, selects at most four relevant/recent turns under a
   1,600-character prompt budget, and derives a measured familiarity tier from
@@ -295,3 +298,11 @@ content hash, source line, reviewer, decision, flags, and evidence summary but
 do not duplicate the dialogue text. Accepted candidates and the append-only
 review ledger remain under ignored `.local` paths. Moving a reviewed candidate
 into `fixtures/replay` is a separate, visible repository decision.
+
+`npm run evidence:report` produces ignored JSON and Markdown summaries. Human
+flags use the latest matched review for each content-addressed interaction;
+automatic signals are reported separately across the unique receipt corpus.
+Latency statistics include only values whose originating receipt says
+`measurementMode: measured`, use the documented nearest-rank percentile method,
+and always expose their sample count. Historical latency is not presented as
+current-route performance.
