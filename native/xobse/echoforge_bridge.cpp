@@ -559,11 +559,11 @@ bool BeginAnimatedPickup(
   UInt32 itemBaseFormId
 ) {
   if (g_pendingPickup.active) return false;
-  char script[48] = {};
+  char script[96] = {};
   const int written = std::snprintf(
     script,
     sizeof(script),
-    "PlayIdle %08X 1",
+    "PlayIdle (GetFormFromMod \"Oblivion.esm\" %08X) 1",
     kPickupGroundIdleFormId
   );
   const bool animationDispatched = written > 0

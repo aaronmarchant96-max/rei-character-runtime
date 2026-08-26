@@ -71,7 +71,10 @@ test("Oblivion pickup dispatch stages a native reach animation before transfer",
   assert.match(source, /ItemIsOffLimits/u);
   assert.match(source, /kMaximumPickupDistanceUnits/u);
   assert.match(source, /kPickupGroundIdleFormId = 0x0003ECAA/u);
-  assert.match(source, /"PlayIdle %08X 1"/u);
+  assert.match(
+    source,
+    /PlayIdle \(GetFormFromMod \\"Oblivion\.esm\\" %08X\) 1/u
+  );
   assert.match(source, /BeginAnimatedPickup/u);
   assert.match(source, /PollPendingPickup/u);
   assert.match(source, /pickup-ground-animation-dispatched/u);

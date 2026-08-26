@@ -853,3 +853,11 @@ already-proven activation transfer. Its receipt advances from `animating` to a
 terminal `completed` or `failed` state. This candidate is compiled and locally
 verified but has not yet been observed in game. It deliberately does not claim
 walking or pathfinding.
+
+The first animated live attempt selected sweetroll reference `000A790A` and
+preserved the exact Nels and base-item identities, but failed closed with
+`pickup-ground-animation-failed`; the item was not transferred. The raw numeric
+idle Form ID did not satisfy `PlayIdle`'s idle-form reference parameter. The
+next candidate resolves the same version-pinned idle through xOBSE's
+`GetFormFromMod` expression before passing it to `PlayIdle`. It requires another
+live test and does not yet establish that the animation plays.
