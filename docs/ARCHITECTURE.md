@@ -44,6 +44,11 @@ action is data; it is never proof that the action is permitted.
   existing routed provider. Generator output cannot approve itself.
 - `src/bridge.js` validates and atomically publishes a bounded text response for
   a game adapter.
+- `src/action-policy.js` validates one versioned `pick-up-item` proposal against
+  an explicit actor/item snapshot. It deterministically denies identity
+  mismatches, unavailable actors, combat, protected or owned items, excessive
+  distance, and unreachable targets. Approval remains data: the module never
+  executes an action.
 - `src/session.js` validates target knowledge, identity continuity, human
   control, and append-only local session evidence.
 - `src/memory.js` isolates memory by exact character ID, atomically retains the
@@ -205,6 +210,19 @@ are not yet inferred.
 Quest state mutation, inventory changes, spawning, combat control, arbitrary
 console commands, and save writes remain prohibited until separately designed
 and tested.
+
+## Action-policy boundary
+
+The first action contract is intentionally offline. Given an exact actor Form
+ID, exact item Form ID, and a complete safety snapshot, the pure policy gate can
+approve or deny a one-item pickup proposal. Both outcomes retain an empty
+`executedActions` list.
+
+The live Oblivion bridge still exports only an actor target and still executes
+no action. A later native increment must explicitly identify the item and
+export the required safety facts; natural-language references such as “that
+apple” must never be resolved by model guesswork. Actual inventory mutation is
+a separate adapter milestone with its own live acceptance test.
 
 ## Evidence receipt contract
 

@@ -164,7 +164,32 @@ matched exact Nels identity, returned the prepared daughter response at 0.174 ms
 dialogue latency, played Piper in 6.405 seconds, and displayed the response in
 game. Broader coverage and player-perceived quality remain unverified.
 
-## Milestone 5 — transfer experiment
+## Milestone 5 — safely mediated action
+
+Claim: an explicit player request can produce one allow-listed action proposal,
+which a deterministic adapter policy either denies or executes against the
+exact observed game references without granting the model console access.
+
+Status: policy-contract only. The runtime now has a pure `pick-up-item` gate
+for an explicit actor/item snapshot. It denies mismatched identities, unsafe
+actor state, protected or owned items, excessive distance, and unreachable
+targets. Approved results still carry an empty `executedActions` list; the live
+bridge does not yet identify an item or mutate the game.
+
+Acceptance evidence:
+
+- The player explicitly identifies both the commanded NPC and target item.
+- Missing safety state fails closed rather than being inferred by the model.
+- Quest/protected items, prohibited ownership, combat, and unreachable targets
+  are rejected before the game adapter receives an executable command.
+- One ordinary apple pickup is observed in game and recorded with proposal,
+  policy, execution, and outcome receipts.
+- Removing or dismissing the experiment leaves the NPC and save recoverable.
+
+Companion follow/wait/dismiss is a later action family. It must restore the
+NPC's original AI package and preserve quest/essential-NPC restrictions.
+
+## Milestone 6 — transfer experiment
 
 Adapt the runtime to Fallout 3 or New Vegas. Record runtime reuse, adapter-only
 work, elapsed human activity, failures, and total integration effort. This is
