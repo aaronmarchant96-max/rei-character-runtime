@@ -71,7 +71,10 @@ test("Oblivion pickup dispatch remains fixed, explicit, and fail-closed", async 
   assert.match(source, /ItemIsOffLimits/u);
   assert.match(source, /kMaximumPickupDistanceUnits/u);
   assert.match(source, /DispatchPickup/u);
+  assert.match(source, /"Activate %08X 1"/u);
+  assert.match(source, /RunScriptLine2\(script, itemReference, true\)/u);
   assert.match(source, /action-receipt\.json/u);
   assert.match(source, /pickup-normal-activation-dispatched/u);
+  assert.doesNotMatch(source, /kActivateActionVirtualIndex/u);
   assert.doesNotMatch(source, /AddItem|RemoveItem|SetStage|ForceActorValue/u);
 });

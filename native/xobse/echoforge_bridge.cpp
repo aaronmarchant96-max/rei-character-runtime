@@ -51,7 +51,6 @@ constexpr UInt32 kReferenceTakenFlags = 0x00000022;
 constexpr float kMaximumPickupDistanceUnits = 500.0F;
 constexpr std::uintptr_t kLookupFormByIdAddress = 0x0046B250;
 constexpr std::uintptr_t kIsOffLimitsToPlayerAddress = 0x004DEBF0;
-constexpr std::size_t kActivateActionVirtualIndex = 0x32;
 
 struct BoundedGameText {
   char value[kMaxGameTextBytes + 1];
@@ -507,13 +506,6 @@ void* LookupFormById(UInt32 formId) {
   return lookup(formId);
 }
 
-template <typename Function>
-Function ReadVirtualFunction(void* object, std::size_t index) {
-  if (!object) return nullptr;
-  void** table = *reinterpret_cast<void***>(object);
-  return table ? reinterpret_cast<Function>(table[index]) : nullptr;
-}
-
 bool ItemIsOffLimits(void* itemReference) {
   using IsOffLimitsFunction = bool (__attribute__((fastcall)) *)(void* object);
   const auto isOffLimits = reinterpret_cast<IsOffLimitsFunction>(
@@ -535,19 +527,17 @@ float ReferenceDistance(void* first, void* second) {
   return std::sqrt((x * x) + (y * y) + (z * z));
 }
 
-bool DispatchPickup(void* itemBaseForm, void* itemReference, void* actorReference) {
-  using ActivateActionFunction = bool (__attribute__((fastcall)) *)(
-    void* object,
-    void* ignoredEdx,
-    void* activatedReference,
-    void* activatingReference,
-    UInt32 unknown
+bool DispatchPickup(void* itemReference, UInt32 actorReferenceFormId) {
+  char script[48] = {};
+  const int written = std::snprintf(
+    script,
+    sizeof(script),
+    "Activate %08X 1",
+    actorReferenceFormId
   );
-  const auto activate = ReadVirtualFunction<ActivateActionFunction>(
-    itemBaseForm,
-    kActivateActionVirtualIndex
-  );
-  return activate && activate(itemBaseForm, nullptr, itemReference, actorReference, 0);
+  return written > 0
+    && static_cast<std::size_t>(written) < sizeof(script)
+    && g_console->RunScriptLine2(script, itemReference, true);
 }
 
 bool PublishQuestion(UInt32 formId, const char* input) {
@@ -953,7 +943,7 @@ void AttemptPickup() {
     return;
   }
 
-  const bool dispatched = DispatchPickup(itemBaseForm, itemReference, actorReference);
+  const bool dispatched = DispatchPickup(itemReference, g_linkedActorFormId);
   PublishActionReceipt(
     g_linkedActorFormId,
     itemReferenceFormId,

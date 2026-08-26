@@ -819,3 +819,11 @@ binding, ingredient type, reference availability, quest/protected flags,
 ownership/off-limits state, and the 500-unit distance limit remain enforced.
 Normal Oblivion activation remains responsible for final actor-state handling.
 The repair is not a successful-pickup result; another live test is required.
+
+That repeat test linked the same Nels reference and selected sweetroll reference
+`000A7909`, again with base `0003369B`. All adapter checks passed and the game
+remained stable, but the low-level activation virtual returned false, producing
+`pickup-normal-activation-failed`; no action was claimed. The next candidate
+removes that virtual call and instead invokes Oblivion's supported `Activate`
+command on the already validated item reference with the exact linked NPC Form
+ID as activator. It also requires another live test.
