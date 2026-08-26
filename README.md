@@ -1,6 +1,12 @@
-# [EXPERIMENT] REI EchoForge
+# REI EchoForge
 
-An evidence-driven experiment in giving legacy-game characters contextual dialogue, bounded memory, and generated speech—without giving a language model unrestricted control of the game.
+**An evidence-driven character runtime for making legacy-game worlds more
+responsive—without giving a language model unrestricted control of the game.**
+
+EchoForge combines local dialogue models, reviewed lore, per-character memory,
+generated speech, a deterministic game adapter, and C-Activity evidence loops.
+Original Oblivion is the first proving ground; the runtime boundary is designed
+to remain game-independent.
 
 The intended player experience is simple:
 
@@ -8,25 +14,44 @@ The intended player experience is simple:
 2. Press a hotkey and type a question.
 3. Receive an in-character subtitle and spoken response.
 
-The current prototype proves a complete first original-Oblivion conversation
-loop. The player can aim at an NPC or creature, press `Y`, type a bounded
-question in game, and press Enter. The xOBSE bridge exports the exact target and
-question; the external runtime validates identity, routes to local Ollama,
-grounds the answer, speaks it through Piper, records measured receipts, and
-returns the response to an in-game message box. Audio is still desktop playback
-through Piper. One exact NPC profile now selects a distinct local prototype
-voice. Bounded per-character memory now carries relevant recent conversation
-and measured familiarity across sessions; audio is still desktop playback
-rather than spatial game audio.
-The default demo remains deterministic and offline; the optional
-`--dialogue=ollama` workflow calls a local dialogue-model provider.
+## What works today
+
+| Capability | Current evidence |
+| --- | --- |
+| Typed NPC conversation | Verified live in original Oblivion: aim, press `Y`, type, and receive an in-game response |
+| Local grounded dialogue | Routed local Ollama models with structured output, exact fact keys, correction, and safe fallback |
+| Fast reviewed dialogue | One accepted Nels family path uses approved prepared material with no live model call |
+| Character voice selection | Exact Nels identity selects a reviewed local Piper voice; unmatched actors retain the default |
+| Bounded memory | Per-character local memory supports relevant follow-ups without promoting generated text into lore |
+| Bounded NPC action | Nels visibly performed a pickup gesture and the selected sweetroll entered his inventory |
+| C-Activity flywheel | Live receipts can be classified, human-reviewed, promoted into replay candidates, replayed, and aggregated |
+
+Audio still plays through desktop Piper rather than the NPC's spatial game-audio
+source. The response UI is an xOBSE message box rather than a native subtitle.
+The pickup experiment has not yet verified NPC locomotion to a distant item.
+Broad NPC lore coverage, lip synchronization, companionship, and a second game
+adapter remain future work.
+
+## How the flywheel works
+
+```text
+play -> capture receipts -> classify observable signals -> human review
+     -> local replay candidate -> regression replay -> evidence report
+     -> separately approved improvement -> play again
+```
+
+Automatic output cannot approve itself, change routing, or execute a game
+action. Human review and the deterministic adapter remain separate authority
+boundaries.
 
 ## Run the vertical slice
 
-Node.js 20 or newer is the only requirement.
+Node.js 20 or newer is the only requirement for the game-independent demo and
+test harness.
 
 ```bash
 npm test
+npm run check
 npm run demo -- "Have you seen anything near the ruins?"
 npm run voice -- "Have you seen anything near the ruins?"
 ```
@@ -131,8 +156,10 @@ Install the resulting ignored `.local/xobse/EchoForgeBridge.dll` in
 ESP, launch through xOBSE, and load a save. The plugin waits
 120 game frames, reads at most 240 bytes, sanitizes script-significant
 characters, and displays the response through xOBSE's supported `MessageBoxEX`
-path. It registers no commands, performs no network requests or game actions,
-and does not read or write save files. See EXP-008 for the measured first run.
+path. The initial EXP-008 display path registered no commands, performed no
+network requests or game actions, and did not read or write save files. The
+current bridge additionally exposes fixed targeting, question, and bounded
+pickup hotkeys; it still exposes no arbitrary model or console-command API.
 
 For the targeting proof, aim the crosshair at an NPC or creature and tap `U`
 once. `F10` is also accepted, but was not detected on the measured ThinkPad
@@ -173,10 +200,11 @@ Manor` produced a grounded response that used those exact facts without
 importing canonical dialogue. A strict profile overlay now matches only Nels's
 exact Form ID and game-derived name, adds five short sourced fact paraphrases,
 and selects `en_GB-northern_english_male-medium`. Deterministic retrieval selects
-only the relevant reviewed facts; Ollama still generates the character's actual
-wording. Casual social turns route to `qwen3:0.6b`, grounded biography routes to
-`qwen3:1.7b`, and unknown factual questions retain the uncertainty gate.
-Unknown or mismatched actors keep the generic profile and default voice.
+only the relevant reviewed facts. Exact approved profile/intent/fact-key matches
+may use reviewed prepared wording; other turns retain local model generation.
+Casual social turns route to `qwen3:0.6b`, grounded biography routes to
+`qwen3:1.7b`, and unknown factual questions retain the uncertainty gate. Unknown
+or mismatched actors keep the generic profile and default voice.
 
 For a repeatable human-controlled loop, use one command:
 
@@ -250,6 +278,22 @@ the reviewed/total denominator, exposes duplicate or orphan records, and
 calculates nearest-rank latency distributions from receipts explicitly marked
 `measured`. It has no routing or execution authority.
 
+### Try the bounded pickup action
+
+With the bridge DLL and `EchoForge.esp` installed and enabled:
+
+1. Aim at an NPC and press `U` to link that exact reference.
+2. Aim at an ordinary ingredient and press `I`.
+3. Read the in-game result and inspect the NPC inventory.
+
+The adapter—not the language model—checks exact identities, actor availability,
+same-cell distance, item type, ownership/off-limits state, quest/protected
+flags, and reachability. It then owns the movement, animation, transfer, and
+verification state machine. One nearby Nels/sweetroll run visibly queued the
+pickup gesture and placed the item in Nels's inventory. A later pathfinding
+candidate adds a temporary EchoForge-owned movement package, but actual walking
+has not yet been observed and is not claimed.
+
 ## Architecture
 
 ```mermaid
@@ -263,11 +307,15 @@ flowchart TD
     F --> E[TTS Adapter]
     F --> G[Allow-Listed Actions]
     G --> A
+    F --> I[Evidence Receipt]
+    I --> J[Human Review]
+    J --> K[Replay + Report]
+    K -. approved change .-> C
 ```
 
-Planned adapters:
+Adapter direction:
 
-- Original Oblivion through xOBSE
+- Experimental original Oblivion adapter through xOBSE
 - Fallout 3 through FOSE or a separately evaluated Tale of Two Wastelands path
 - Local and hosted dialogue models selected by measurable cost/latency needs
 - Local speech recognition and consent-safe text-to-speech voices
@@ -293,12 +341,13 @@ Planned adapters:
 
 ## Status
 
-Experimental pre-alpha. One live typed conversation loop is verified in original
-Oblivion. One exact NPC has a locally tested knowledge and voice profile;
-one reviewed fact now has three prepared variants that require no live model
-call. One Nels daughter turn has confirmed that two-speed path in game; broader
-NPC coverage, spatial audio, lip synchronization, richer relationship state,
-and live actions remain incomplete. A deterministic pickup policy and a
-version-pinned native `U`-then-`I` candidate now identify an NPC and ingredient,
-apply fixed safety checks, and emit an action receipt. The candidate compiles
-but remains unverified in game; no successful action claim is made yet.
+Experimental pre-alpha. The original-Oblivion typed conversation loop, one
+profiled/prepared Nels lore path, local voice selection, bounded persistent
+memory, and one nearby gesture-plus-inventory pickup have been observed in the
+live game. The C-Activity layer records, reviews, replays, and aggregates
+evidence outside the game.
+
+This is not yet an every-NPC replacement dialogue system. Spatial audio, native
+subtitles, lip synchronization, distant-item locomotion, companion behavior,
+broad reviewed lore coverage, and transfer to Fallout remain incomplete or
+unverified.
