@@ -207,6 +207,24 @@ Successful turns also enter an ignored local memory file keyed to the exact NPC
 identity. At most four relevant/recent turns and 1,600 transcript characters
 can enter a later prompt; canonical facts remain a separate evidence layer.
 
+Every new spoken-turn record also carries a deterministic C-Activity
+classification. It flags observable fallback, corrective validation, failed
+voice playback, technical-language leakage, and dialogue/action authority
+violations without pretending to score subjective character quality. A
+human-accepted interaction can be promoted to a checked-in replay fixture. Run
+the current replay corpus without launching Oblivion or playing audio:
+
+```bash
+npm run evidence:replay
+```
+
+The first fixture replays the accepted Nels family interaction through the
+actual profile, prepared-material, routing, response, and voice-selection
+boundaries. It verifies identity, fact use, grounding, route/provider, the
+prepared-path latency ceiling, selected voice, prohibited system language, and
+zero model action authority. Live audio quality and gameplay behavior remain
+human-observed measurements rather than replay claims.
+
 ## Architecture
 
 ```mermaid

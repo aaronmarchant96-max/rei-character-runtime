@@ -13,6 +13,7 @@
     "npc:target": "node scripts/talk-to-oblivion-target.mjs",
     "oblivion:session": "node scripts/run-oblivion-session.mjs",
     "oblivion:live": "node scripts/run-oblivion-live.mjs",
+    "evidence:replay": "node scripts/replay-evidence.mjs",
     "target:listen": "node scripts/listen-oblivion-target.mjs",
     "question:listen": "node scripts/listen-oblivion-question.mjs",
     "bridge:fixture": "node scripts/write-bridge-response.mjs",

@@ -50,7 +50,11 @@ action is data; it is never proof that the action is permitted.
   distance, and unreachable targets. Approval remains data: the module never
   executes an action.
 - `src/session.js` validates target knowledge, identity continuity, human
-  control, and append-only local session evidence.
+  control, and append-only local session evidence. Every newly recorded spoken
+  turn includes its C-Activity classification.
+- `src/interaction-evidence.js` converts observable receipt fields into bounded
+  failure signals and evaluates human-accepted replay fixtures. It does not
+  infer lore truth or assign a subjective quality score.
 - `src/memory.js` isolates memory by exact character ID, atomically retains the
   last 24 successful turns, selects at most four relevant/recent turns under a
   1,600-character prompt budget, and derives a measured familiarity tier from
@@ -258,3 +262,26 @@ latency.
 Prepared turns additionally record catalogue and material IDs, exact fact keys,
 variant index/count, generator model, approval mode/date, zero provider cost,
 zero model tokens, and zero live-model attempts.
+
+## C-Activity replay loop
+
+```text
+live play -> spoken-turn receipt -> deterministic classification
+                                      |
+                                      v
+                           named human acceptance
+                                      |
+                                      v
+                              replay fixture
+                                      |
+                                      v
+current runtime -> same evidence oracle -> pass or explicit regression reasons
+```
+
+Promotion is deliberately one-way: an automatically recorded answer cannot
+declare itself correct. A named human acceptance is required before it becomes
+a replay fixture. The oracle then checks stable contract properties—identity,
+answer mode, exact fact keys, route/provider, grounding, latency-path ceiling,
+voice selection, forbidden system language, and action authority. It does not
+claim that lexical checks prove semantic truth or that silent replay proves
+audio quality.

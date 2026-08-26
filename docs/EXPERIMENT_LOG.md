@@ -948,3 +948,32 @@ ignored save-load interruption, and acceptance of a second overlapping action.
 This transfers REI AI's single-oracle mutation-control pattern into EchoForge.
 It establishes that the local test can discriminate these unsafe lifecycle
 implementations; it does not establish that Oblivion will pathfind successfully.
+
+## EXP-027 — accepted interaction becomes a C-Activity replay fixture
+
+- Date: 2026-08-26
+- Source observation: human-accepted live Nels family response recorded at
+  `2026-08-25T03:00:08.896Z`
+- Local verification: 66 tests passed; `npm run evidence:replay` passed the
+  `nels-family` fixture through the current runtime
+- Mutation controls: the same replay oracle rejected eight regressions covering
+  identity, answer mode, missing fact use, grounding fallback, prepared-path
+  latency, voice selection, prohibited technical language, and dialogue actions
+- Mode: source response and original audio were human-observed; replay routing,
+  fact use, latency, and voice selection were locally measured; replay audio was
+  intentionally not played
+
+New spoken-turn JSONL records carry a deterministic C-Activity classification
+for observable fallback, validation correction, voice failure, technical
+language leakage, and authority violations. The classifier does not assign a
+subjective character-quality score. An automatically recorded answer also
+cannot approve itself: checked-in replay fixtures require a named
+`human-accepted` review.
+
+The first fixture freezes stable properties of the accepted Nels daughter
+interaction rather than its exact prose. It requires the exact character,
+`profile.family`, the economy and prepared-material path, passed grounding,
+the reviewed Nels voice, a 250 ms dialogue ceiling, no system-language leakage,
+and no model action authority. This establishes one evidence-to-replay loop. It
+does not establish general lore correctness, improved intelligence across NPCs,
+audible voice quality, or successful Oblivion locomotion.

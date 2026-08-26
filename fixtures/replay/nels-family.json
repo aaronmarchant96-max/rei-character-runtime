@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "nels-family",
+  "source": {
+    "evidenceMode": "human-observed",
+    "sourceEvent": "spoken-turn",
+    "recordedAt": "2026-08-25T03:00:08.896Z"
+  },
+  "review": {
+    "verdict": "human-accepted",
+    "reviewer": "project-owner",
+    "reviewedAt": "2026-08-24"
+  },
+  "input": {
+    "target": {
+      "schemaVersion": 2,
+      "game": "oblivion-2009",
+      "referenceFormId": "00028B76",
+      "actorKind": "npc",
+      "displayName": "Nels the Naughty",
+      "locationFormId": "00027D53",
+      "locationName": "Summitmist Manor"
+    },
+    "question": "tell me about your daughter"
+  },
+  "expectations": {
+    "characterId": "oblivion-2009:00028B76",
+    "answerMode": "known",
+    "requiredFactKeys": [
+      "profile.family"
+    ],
+    "allowedFactKeys": [
+      "profile.family"
+    ],
+    "allowedRoutes": [
+      "economy"
+    ],
+    "allowedProviders": [
+      "prepared-character-material"
+    ],
+    "groundingStatus": "passed",
+    "fallbackUsed": false,
+    "actionAuthority": "none",
+    "maxProposedActions": 0,
+    "maxExecutedActions": 0,
+    "maxDialogueLatencyMs": 250,
+    "requiredVoiceModel": "en_GB-northern_english_male-medium",
+    "forbiddenResponseTerms": [
+      "AI",
+      "model",
+      "prompt",
+      "JSON",
+      "player-selected",
+      "factual information"
+    ]
+  }
+}

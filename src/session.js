@@ -1,5 +1,6 @@
 import { appendFile, mkdir } from "node:fs/promises";
 import { dirname, isAbsolute } from "node:path";
+import { classifyInteraction } from "./interaction-evidence.js";
 import { resolveOblivionProfile } from "./oblivion-profiles.js";
 import { parseTargetEnvelope } from "./target.js";
 
@@ -66,7 +67,7 @@ export function createSpokenTurnRecord({ target, question, turn }) {
     throw new TypeError("supervised target turn must preserve human control");
   }
 
-  return {
+  const record = {
     schemaVersion: 1,
     event: "spoken-turn",
     characterId,
@@ -82,6 +83,10 @@ export function createSpokenTurnRecord({ target, question, turn }) {
     voiceReceipt: turn?.voiceReceipt ?? null,
     proposedActions: [],
     executedActions: []
+  };
+  return {
+    ...record,
+    cActivity: classifyInteraction(record)
   };
 }
 
