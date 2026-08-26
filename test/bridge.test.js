@@ -76,8 +76,15 @@ test("Oblivion pickup dispatch stages a native reach animation before transfer",
   assert.match(source, /kQueueIdleAddress = 0x00477DB0/u);
   assert.match(source, /DispatchPickupAnimation/u);
   assert.match(source, /BeginWalkingPickup/u);
-  assert.match(source, /SetPackageTarget EchoForgePickupTravel %08X/u);
-  assert.match(source, /AddScriptPackage EchoForgePickupTravel/u);
+  assert.match(source, /FindEchoForgePickupPackage/u);
+  assert.match(source, /SetEchoForgePackageTarget/u);
+  assert.match(source, /kDataHandlerPointerAddress = 0x00B33A98/u);
+  assert.match(source, /kEchoForgePackageLocalFormId = 0x00000800/u);
+  assert.match(source, /"AddScriptPackage %08X"/u);
+  assert.match(source, /pickup-walking-plugin-not-loaded/u);
+  assert.match(source, /EchoForge\.esp is not active in Oblivion's load order/u);
+  assert.match(source, /pickup-walking-target-assignment-failed/u);
+  assert.match(source, /pickup-walking-package-start-command-failed/u);
   assert.match(source, /RemoveScriptPackage/u);
   assert.match(source, /pickup-walking-package-started/u);
   assert.match(source, /pickup-walking-timeout/u);
@@ -90,6 +97,7 @@ test("Oblivion pickup dispatch stages a native reach animation before transfer",
   assert.match(source, /RunScriptLine2\(script, itemReference, true\)/u);
   assert.match(source, /action-receipt\.json/u);
   assert.doesNotMatch(source, /PlayIdle \(GetFormFromMod/u);
+  assert.doesNotMatch(source, /SetPackageTarget EchoForgePickupTravel/u);
   assert.doesNotMatch(source, /\.MoveTo|SetPos|PositionCell/u);
   assert.doesNotMatch(source, /kActivateActionVirtualIndex/u);
   assert.doesNotMatch(source, /AddItem|RemoveItem|SetStage|ForceActorValue/u);

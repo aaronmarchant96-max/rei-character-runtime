@@ -63,6 +63,15 @@ constexpr UInt32 kIdleAnimFlagsMask = 0x7F;
 constexpr UInt32 kIdleQueueMode = 3;
 constexpr std::uintptr_t kLookupFormByIdAddress = 0x0046B250;
 constexpr std::uintptr_t kIsOffLimitsToPlayerAddress = 0x004DEBF0;
+constexpr std::uintptr_t kDataHandlerPointerAddress = 0x00B33A98;
+constexpr std::size_t kLoadedModsByIdOffset = 0x8D4;
+constexpr std::size_t kModDataNameOffset = 0x1C;
+constexpr UInt32 kEchoForgePackageLocalFormId = 0x00000800;
+constexpr std::uint8_t kPackageFormType = 0x3D;
+constexpr std::size_t kPackageTargetPointerOffset = 0x28;
+constexpr std::size_t kPackageTargetTypeOffset = 0x00;
+constexpr std::size_t kPackageTargetFormOffset = 0x04;
+constexpr std::size_t kPackageTargetCountOffset = 0x08;
 
 struct BoundedGameText {
   char value[kMaxGameTextBytes + 1];
@@ -76,6 +85,13 @@ struct PendingPickup {
   UInt32 itemReferenceFormId;
   UInt32 itemBaseFormId;
   DWORD phaseStartedAt;
+};
+
+enum class WalkingPickupStartResult {
+  Started,
+  PluginNotLoaded,
+  TargetAssignmentFailed,
+  StartCommandFailed
 };
 
 struct PluginInfo {
@@ -528,6 +544,48 @@ void* LookupFormById(UInt32 formId) {
   return lookup(formId);
 }
 
+void* FindEchoForgePickupPackage(UInt32* packageFormId) {
+  void* dataHandler = *reinterpret_cast<void**>(kDataHandlerPointerAddress);
+  if (!dataHandler) return nullptr;
+  for (UInt32 modIndex = 0; modIndex < 0xFF; ++modIndex) {
+    void* modData = ReadPointerAt(
+      dataHandler,
+      kLoadedModsByIdOffset + (modIndex * sizeof(void*))
+    );
+    if (!modData) continue;
+    const char* modName = reinterpret_cast<const char*>(
+      static_cast<std::uint8_t*>(modData) + kModDataNameOffset
+    );
+    if (_stricmp(modName, "EchoForge.esp") != 0) continue;
+    const UInt32 fullFormId = (modIndex << 24) | kEchoForgePackageLocalFormId;
+    void* package = LookupFormById(fullFormId);
+    if (!package
+        || *reinterpret_cast<std::uint8_t*>(
+          static_cast<std::uint8_t*>(package) + kFormTypeOffset
+        ) != kPackageFormType) {
+      return nullptr;
+    }
+    *packageFormId = fullFormId;
+    return package;
+  }
+  return nullptr;
+}
+
+bool SetEchoForgePackageTarget(void* package, void* itemReference) {
+  void* target = ReadPointerAt(package, kPackageTargetPointerOffset);
+  if (!target || !itemReference) return false;
+  *reinterpret_cast<std::uint8_t*>(
+    static_cast<std::uint8_t*>(target) + kPackageTargetTypeOffset
+  ) = 0; // TESPackage::kTargetType_Refr
+  *reinterpret_cast<void**>(
+    static_cast<std::uint8_t*>(target) + kPackageTargetFormOffset
+  ) = itemReference;
+  *reinterpret_cast<UInt32*>(
+    static_cast<std::uint8_t*>(target) + kPackageTargetCountOffset
+  ) = 1;
+  return true;
+}
+
 bool ItemIsOffLimits(void* itemReference) {
   using IsOffLimitsFunction = bool (__attribute__((fastcall)) *)(void* object);
   const auto isOffLimits = reinterpret_cast<IsOffLimitsFunction>(
@@ -634,29 +692,42 @@ bool BeginAnimatedPickup(
   return true;
 }
 
-bool BeginWalkingPickup(
+WalkingPickupStartResult BeginWalkingPickup(
   void* actorReference,
   UInt32 actorReferenceFormId,
   UInt32 itemReferenceFormId,
   UInt32 itemBaseFormId
 ) {
-  if (g_pendingPickup.active) return false;
-  char targetScript[96] = {};
+  if (g_pendingPickup.active) return WalkingPickupStartResult::StartCommandFailed;
+  UInt32 packageFormId = 0;
+  void* package = FindEchoForgePickupPackage(&packageFormId);
+  if (!package) {
+    AppendLog("pickup-walking-plugin-not-loaded");
+    return WalkingPickupStartResult::PluginNotLoaded;
+  }
+  void* itemReference = LookupFormById(itemReferenceFormId);
+  if (!SetEchoForgePackageTarget(package, itemReference)) {
+    AppendLog("pickup-walking-target-assignment-failed");
+    return WalkingPickupStartResult::TargetAssignmentFailed;
+  }
+  char packageScript[64] = {};
   const int written = std::snprintf(
-    targetScript,
-    sizeof(targetScript),
-    "SetPackageTarget EchoForgePickupTravel %08X",
-    itemReferenceFormId
+    packageScript,
+    sizeof(packageScript),
+    "AddScriptPackage %08X",
+    packageFormId
   );
-  const bool targetSet = written > 0
-    && static_cast<std::size_t>(written) < sizeof(targetScript)
-    && g_console->RunScriptLine2(targetScript, nullptr, true);
-  const bool packageStarted = targetSet && g_console->RunScriptLine2(
-    "AddScriptPackage EchoForgePickupTravel",
+  const bool packageStarted = written > 0
+    && static_cast<std::size_t>(written) < sizeof(packageScript)
+    && g_console->RunScriptLine2(
+    packageScript,
     actorReference,
     true
   );
-  if (!packageStarted) return false;
+  if (!packageStarted) {
+    AppendLog("pickup-walking-package-start-command-failed");
+    return WalkingPickupStartResult::StartCommandFailed;
+  }
   g_pendingPickup = {
     true,
     true,
@@ -673,7 +744,7 @@ bool BeginWalkingPickup(
     "pickup-walking-package-started"
   );
   AppendLog("pickup-walking-package-started");
-  return true;
+  return WalkingPickupStartResult::Started;
 }
 
 void FinishPendingPickup(const char* status, const char* reason, const char* message) {
@@ -1217,13 +1288,14 @@ void AttemptPickup() {
   }
 
   const float distance = ReferenceDistance(actorReference, itemReference);
+  WalkingPickupStartResult walkingResult = WalkingPickupStartResult::Started;
   const bool started = distance > kPickupGestureDistanceUnits
-    ? BeginWalkingPickup(
+    ? (walkingResult = BeginWalkingPickup(
       actorReference,
       g_linkedActorFormId,
       itemReferenceFormId,
       itemBaseFormId
-    )
+    )) == WalkingPickupStartResult::Started
     : BeginAnimatedPickup(
       actorReference,
       g_linkedActorFormId,
@@ -1231,15 +1303,26 @@ void AttemptPickup() {
       itemBaseFormId
     );
   if (!started) {
+    const bool walking = distance > kPickupGestureDistanceUnits;
+    const char* failureReason = "pickup-ground-animation-failed";
+    const char* failureMessage = "Oblivion could not start the pickup animation.";
+    if (walking) {
+      if (walkingResult == WalkingPickupStartResult::PluginNotLoaded) {
+        failureReason = "pickup-walking-plugin-not-loaded";
+        failureMessage = "EchoForge.esp is not active in Oblivion's load order.";
+      } else if (walkingResult == WalkingPickupStartResult::TargetAssignmentFailed) {
+        failureReason = "pickup-walking-target-assignment-failed";
+        failureMessage = "EchoForge could not bind that item to the movement package.";
+      } else {
+        failureReason = "pickup-walking-package-start-command-failed";
+        failureMessage = "Oblivion rejected the EchoForge movement package.";
+      }
+    }
     RejectPickup(
       itemReferenceFormId,
       itemBaseFormId,
-      distance > kPickupGestureDistanceUnits
-        ? "pickup-walking-package-failed"
-        : "pickup-ground-animation-failed",
-      distance > kPickupGestureDistanceUnits
-        ? "The EchoForge movement package is not available."
-        : "Oblivion could not start the pickup animation."
+      failureReason,
+      failureMessage
     );
   }
 }
