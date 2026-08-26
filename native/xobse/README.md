@@ -24,10 +24,13 @@ Build with:
 
 ```bash
 npm run bridge:build
+npm run bridge:plugin
 ```
 
-The ignored output is `.local/xobse/EchoForgeBridge.dll`. Runtime installation
-is a separate measured operation.
+The ignored outputs are `.local/xobse/EchoForgeBridge.dll` and
+`.local/oblivion/EchoForge.esp`. Runtime installation is a separate measured
+operation. The ESP contains one scriptless EchoForge-owned AI package and
+depends only on `Oblivion.esm`.
 
 ## Experimental pickup control
 
@@ -38,19 +41,20 @@ is a separate measured operation.
 The plugin resolves the linked NPC again by Form ID and requires an NPC and
 ingredient in the same cell. It rejects disabled/taken, quest/protected,
 owned/off-limits, or distant ingredients and every non-ingredient target. An
-accepted attempt asks the linked NPC to play Oblivion's native ground-pickup
+accepted attempt starts the dedicated EchoForge Find package when the NPC is
+outside gesture range. Oblivion performs the pathfinding. At proximity, the
+bridge removes the temporary package, queues Oblivion's native ground-pickup
 idle, waits briefly, revalidates the same actor and item, and only then uses the
-ingredient's normal activation behavior with that NPC as the activator. The
-engine remains responsible for whether it can play the animation and complete
-the activation. It atomically writes the exact IDs and action state to:
+ingredient's normal activation behavior with that NPC as the activator. A
+12-second timeout restores normal AI if the item cannot be reached. It
+atomically writes the exact IDs and action state to:
 
 ```text
 Data/OBSE/Plugins/EchoForge/action-receipt.json
 ```
 
-This version-pinned animated-pickup candidate has compiled but is not yet
-live-verified. It does not make the NPC walk to a distant item; pathfinding is a
-separate AI-package experiment. The model cannot supply script text or bypass
-the fixed checks.
+The gesture-and-transfer sequence is live-verified. The pathfinding package is
+compiled and locally verified but has not yet been observed in game. The model
+cannot supply script text, package identifiers, or bypass the fixed checks.
 Existing `response.txt` content is treated as stale when a save loads and is
 not replayed; only a later file change can display a dialogue response.

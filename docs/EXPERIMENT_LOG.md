@@ -876,3 +876,28 @@ by xOBSE. Missing form, function, or animation data fails before transfer and
 emits a distinct log reason. This native queue candidate is locally verified
 but requires live observation; a successful queue still must not be reported as
 a visible animation until the player sees it.
+
+## EXP-024 — native gesture and transfer complete in sequence
+
+- Date: 2026-08-26
+- Candidate commit: `8fda57f`
+- Linked actor: Nels `00028B76`
+- Player observation: Nels visibly motioned to pick up the item
+- Player observation: Nels did not walk from his position
+- Player observation: the item appeared in Nels's inventory
+- Local verification before installation: 59 tests passed; strict 32-bit build
+  passed
+- Mode: queue and transfer locally instrumented; gesture, locomotion absence,
+  and inventory result human-observed
+
+This verifies the native idle queue and delayed transfer as one visible action
+sequence. It does not verify locomotion.
+
+The next candidate adds a generated 260-byte `EchoForge.esp` containing one
+scriptless, EchoForge-owned Find package. For an allowed item beyond the
+140-unit gesture threshold, the bridge binds that exact reference as the
+package target, starts it as the linked NPC's temporary script package, polls
+proximity, and removes it before the verified gesture-and-transfer sequence. A
+12-second timeout removes the package and fails closed. The bridge contains no
+teleport or direct position command. This locomotion candidate is locally
+verified but requires an in-game load and pathfinding test.

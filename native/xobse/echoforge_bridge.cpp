@@ -49,6 +49,8 @@ constexpr UInt32 kFormQuestItemFlag = 0x00000400;
 constexpr UInt32 kReferenceDisabledFlag = 0x00000800;
 constexpr UInt32 kReferenceTakenFlags = 0x00000022;
 constexpr float kMaximumPickupDistanceUnits = 500.0F;
+constexpr float kPickupGestureDistanceUnits = 140.0F;
+constexpr DWORD kPickupWalkingTimeoutMs = 12000;
 // Oblivion.esm IDLE record: PicUpObjectGround.
 constexpr UInt32 kPickupGroundIdleFormId = 0x0003ECAA;
 constexpr DWORD kPickupAnimationLeadTimeMs = 900;
@@ -69,10 +71,11 @@ struct BoundedGameText {
 
 struct PendingPickup {
   bool active;
+  bool walking;
   UInt32 actorReferenceFormId;
   UInt32 itemReferenceFormId;
   UInt32 itemBaseFormId;
-  DWORD animationStartedAt;
+  DWORD phaseStartedAt;
 };
 
 struct PluginInfo {
@@ -615,6 +618,7 @@ bool BeginAnimatedPickup(
   if (!animationDispatched) return false;
   g_pendingPickup = {
     true,
+    false,
     actorReferenceFormId,
     itemReferenceFormId,
     itemBaseFormId,
@@ -630,9 +634,57 @@ bool BeginAnimatedPickup(
   return true;
 }
 
+bool BeginWalkingPickup(
+  void* actorReference,
+  UInt32 actorReferenceFormId,
+  UInt32 itemReferenceFormId,
+  UInt32 itemBaseFormId
+) {
+  if (g_pendingPickup.active) return false;
+  char targetScript[96] = {};
+  const int written = std::snprintf(
+    targetScript,
+    sizeof(targetScript),
+    "SetPackageTarget EchoForgePickupTravel %08X",
+    itemReferenceFormId
+  );
+  const bool targetSet = written > 0
+    && static_cast<std::size_t>(written) < sizeof(targetScript)
+    && g_console->RunScriptLine2(targetScript, nullptr, true);
+  const bool packageStarted = targetSet && g_console->RunScriptLine2(
+    "AddScriptPackage EchoForgePickupTravel",
+    actorReference,
+    true
+  );
+  if (!packageStarted) return false;
+  g_pendingPickup = {
+    true,
+    true,
+    actorReferenceFormId,
+    itemReferenceFormId,
+    itemBaseFormId,
+    GetTickCount()
+  };
+  PublishActionReceipt(
+    actorReferenceFormId,
+    itemReferenceFormId,
+    itemBaseFormId,
+    "walking",
+    "pickup-walking-package-started"
+  );
+  AppendLog("pickup-walking-package-started");
+  return true;
+}
+
 void FinishPendingPickup(const char* status, const char* reason, const char* message) {
   const PendingPickup pickup = g_pendingPickup;
   g_pendingPickup = {};
+  if (pickup.walking) {
+    void* actorReference = LookupFormById(pickup.actorReferenceFormId);
+    if (actorReference) {
+      g_console->RunScriptLine2("RemoveScriptPackage", actorReference, true);
+    }
+  }
   PublishActionReceipt(
     pickup.actorReferenceFormId,
     pickup.itemReferenceFormId,
@@ -654,10 +706,7 @@ void FinishPendingPickup(const char* status, const char* reason, const char* mes
 }
 
 void PollPendingPickup() {
-  if (!g_pendingPickup.active
-      || GetTickCount() - g_pendingPickup.animationStartedAt < kPickupAnimationLeadTimeMs) {
-    return;
-  }
+  if (!g_pendingPickup.active) return;
   void* actorReference = LookupFormById(g_pendingPickup.actorReferenceFormId);
   void* actorBaseForm = ReadPointerAt(actorReference, kReferenceBaseFormOffset);
   void* itemReference = LookupFormById(g_pendingPickup.itemReferenceFormId);
@@ -676,8 +725,7 @@ void PollPendingPickup() {
       || ReadUInt32At(itemBaseForm, kFormIdOffset) != g_pendingPickup.itemBaseFormId
       || itemType != kIngredientFormType
       || ReadPointerAt(actorReference, kReferenceParentCellOffset)
-        != ReadPointerAt(itemReference, kReferenceParentCellOffset)
-      || ReferenceDistance(actorReference, itemReference) > kMaximumPickupDistanceUnits) {
+        != ReadPointerAt(itemReference, kReferenceParentCellOffset)) {
     FinishPendingPickup(
       "failed",
       "pickup-state-changed-during-animation",
@@ -687,14 +735,67 @@ void PollPendingPickup() {
   }
   const UInt32 itemFlags = ReadUInt32At(itemReference, 0x08);
   if ((itemFlags & kReferenceDisabledFlag) != 0
-      || (itemFlags & kReferenceTakenFlags) == kReferenceTakenFlags
-      || (ReadUInt32At(itemBaseForm, 0x08) & kFormQuestItemFlag) != 0
+      || (itemFlags & kReferenceTakenFlags) == kReferenceTakenFlags) {
+    FinishPendingPickup(
+      g_pendingPickup.walking ? "completed" : "failed",
+      g_pendingPickup.walking
+        ? "pickup-completed-by-ai-package"
+        : "pickup-item-became-unavailable",
+      g_pendingPickup.walking
+        ? "NPC pickup completed through Oblivion pathfinding."
+        : "Pickup stopped because the item is no longer available."
+    );
+    return;
+  }
+  if ((ReadUInt32At(itemBaseForm, 0x08) & kFormQuestItemFlag) != 0
       || ItemIsOffLimits(itemReference)) {
     FinishPendingPickup(
       "failed",
       "pickup-item-became-unavailable",
       "Pickup stopped because the item is no longer allowed."
     );
+    return;
+  }
+  const float distance = ReferenceDistance(actorReference, itemReference);
+  if (distance > kMaximumPickupDistanceUnits) {
+    FinishPendingPickup(
+      "failed",
+      "pickup-state-changed-during-animation",
+      "Pickup stopped because the actor or item moved out of range."
+    );
+    return;
+  }
+  if (g_pendingPickup.walking) {
+    if (GetTickCount() - g_pendingPickup.phaseStartedAt >= kPickupWalkingTimeoutMs) {
+      FinishPendingPickup(
+        "failed",
+        "pickup-walking-timeout",
+        "NPC could not reach the item in time."
+      );
+      return;
+    }
+    if (distance > kPickupGestureDistanceUnits) return;
+    const PendingPickup pickup = g_pendingPickup;
+    g_console->RunScriptLine2("RemoveScriptPackage", actorReference, true);
+    g_pendingPickup = {};
+    if (!BeginAnimatedPickup(
+          actorReference,
+          pickup.actorReferenceFormId,
+          pickup.itemReferenceFormId,
+          pickup.itemBaseFormId
+        )) {
+      PublishActionReceipt(
+        pickup.actorReferenceFormId,
+        pickup.itemReferenceFormId,
+        pickup.itemBaseFormId,
+        "failed",
+        "pickup-ground-animation-failed-after-walk"
+      );
+      AppendLog("pickup-ground-animation-failed-after-walk");
+    }
+    return;
+  }
+  if (GetTickCount() - g_pendingPickup.phaseStartedAt < kPickupAnimationLeadTimeMs) {
     return;
   }
   const bool dispatched = DispatchPickup(
@@ -1115,17 +1216,30 @@ void AttemptPickup() {
     return;
   }
 
-  if (!BeginAnimatedPickup(
-        actorReference,
-        g_linkedActorFormId,
-        itemReferenceFormId,
-        itemBaseFormId
-      )) {
+  const float distance = ReferenceDistance(actorReference, itemReference);
+  const bool started = distance > kPickupGestureDistanceUnits
+    ? BeginWalkingPickup(
+      actorReference,
+      g_linkedActorFormId,
+      itemReferenceFormId,
+      itemBaseFormId
+    )
+    : BeginAnimatedPickup(
+      actorReference,
+      g_linkedActorFormId,
+      itemReferenceFormId,
+      itemBaseFormId
+    );
+  if (!started) {
     RejectPickup(
       itemReferenceFormId,
       itemBaseFormId,
-      "pickup-ground-animation-failed",
-      "Oblivion could not start the pickup animation."
+      distance > kPickupGestureDistanceUnits
+        ? "pickup-walking-package-failed"
+        : "pickup-ground-animation-failed",
+      distance > kPickupGestureDistanceUnits
+        ? "The EchoForge movement package is not available."
+        : "Oblivion could not start the pickup animation."
     );
   }
 }

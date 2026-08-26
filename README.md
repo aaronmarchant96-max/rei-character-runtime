@@ -120,13 +120,15 @@ With the 32-bit MinGW C++ compiler installed:
 
 ```bash
 npm run bridge:build
+npm run bridge:plugin
 npm run bridge:fixture -- \
   --output=/absolute/Oblivion/Data/OBSE/Plugins/EchoForge/response.txt \
   "External response reached Oblivion."
 ```
 
 Install the resulting ignored `.local/xobse/EchoForgeBridge.dll` in
-`Data/OBSE/Plugins/`, launch through xOBSE, and load a save. The plugin waits
+`Data/OBSE/Plugins/` and `.local/oblivion/EchoForge.esp` in `Data/`, enable the
+ESP, launch through xOBSE, and load a save. The plugin waits
 120 game frames, reads at most 240 bytes, sanitizes script-significant
 characters, and displays the response through xOBSE's supported `MessageBoxEX`
 path. It registers no commands, performs no network requests or game actions,

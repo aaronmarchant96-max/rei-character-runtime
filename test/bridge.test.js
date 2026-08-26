@@ -75,6 +75,12 @@ test("Oblivion pickup dispatch stages a native reach animation before transfer",
   assert.match(source, /kGetActorAnimDataVirtualOffset = 0x164/u);
   assert.match(source, /kQueueIdleAddress = 0x00477DB0/u);
   assert.match(source, /DispatchPickupAnimation/u);
+  assert.match(source, /BeginWalkingPickup/u);
+  assert.match(source, /SetPackageTarget EchoForgePickupTravel %08X/u);
+  assert.match(source, /AddScriptPackage EchoForgePickupTravel/u);
+  assert.match(source, /RemoveScriptPackage/u);
+  assert.match(source, /pickup-walking-package-started/u);
+  assert.match(source, /pickup-walking-timeout/u);
   assert.match(source, /BeginAnimatedPickup/u);
   assert.match(source, /PollPendingPickup/u);
   assert.match(source, /pickup-ground-animation-native-queued/u);
@@ -84,6 +90,7 @@ test("Oblivion pickup dispatch stages a native reach animation before transfer",
   assert.match(source, /RunScriptLine2\(script, itemReference, true\)/u);
   assert.match(source, /action-receipt\.json/u);
   assert.doesNotMatch(source, /PlayIdle \(GetFormFromMod/u);
+  assert.doesNotMatch(source, /\.MoveTo|SetPos|PositionCell/u);
   assert.doesNotMatch(source, /kActivateActionVirtualIndex/u);
   assert.doesNotMatch(source, /AddItem|RemoveItem|SetStage|ForceActorValue/u);
 });
