@@ -61,7 +61,7 @@ test("Oblivion bridge uses xOBSE-native text input instead of an OS window", asy
   assert.doesNotMatch(source, /CreateWindowExA|QuestionWindowProcedure/u);
 });
 
-test("Oblivion pickup dispatch remains fixed, explicit, and fail-closed", async () => {
+test("Oblivion pickup dispatch stages a native reach animation before transfer", async () => {
   const source = await readFile("native/xobse/echoforge_bridge.cpp", "utf8");
 
   assert.match(source, /kIScanCode/u);
@@ -70,11 +70,16 @@ test("Oblivion pickup dispatch remains fixed, explicit, and fail-closed", async 
   assert.match(source, /kFormQuestItemFlag/u);
   assert.match(source, /ItemIsOffLimits/u);
   assert.match(source, /kMaximumPickupDistanceUnits/u);
+  assert.match(source, /kPickupGroundIdleFormId = 0x0003ECAA/u);
+  assert.match(source, /"PlayIdle %08X 1"/u);
+  assert.match(source, /BeginAnimatedPickup/u);
+  assert.match(source, /PollPendingPickup/u);
+  assert.match(source, /pickup-ground-animation-dispatched/u);
+  assert.match(source, /pickup-completed-after-animation/u);
   assert.match(source, /DispatchPickup/u);
   assert.match(source, /"Activate %08X 1"/u);
   assert.match(source, /RunScriptLine2\(script, itemReference, true\)/u);
   assert.match(source, /action-receipt\.json/u);
-  assert.match(source, /pickup-normal-activation-dispatched/u);
   assert.doesNotMatch(source, /kActivateActionVirtualIndex/u);
   assert.doesNotMatch(source, /AddItem|RemoveItem|SetStage|ForceActorValue/u);
 });

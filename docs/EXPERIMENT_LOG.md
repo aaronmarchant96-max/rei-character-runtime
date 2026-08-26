@@ -827,3 +827,29 @@ remained stable, but the low-level activation virtual returned false, producing
 removes that virtual call and instead invokes Oblivion's supported `Activate`
 command on the already validated item reference with the exact linked NPC Form
 ID as activator. It also requires another live test.
+
+## EXP-023 — bounded inventory transfer succeeds without visible pickup
+
+- Date: 2026-08-25
+- Candidate commit: `f12d6f9`
+- Linked actor: Nels `00028B76`
+- Selected item base: `0003369B` (player-observed sweetroll)
+- Adapter result: `pickup-normal-activation-dispatched`
+- Human observation: the sweetroll disappeared from the world and appeared in
+  Nels's inventory
+- Human observation: Nels did not visibly reach for or grab the item
+- Final verification before installation: 59 tests passed; strict 32-bit
+  warning-free build passed
+- Mode: native receipt and local checks measured; inventory presence and lack
+  of animation human-observed in the live game
+
+This verifies a bounded game-state mutation through normal activation, not a
+physical NPC action sequence. Inventory transfer alone does not establish
+pathfinding, animation, or embodied behavior.
+
+The next candidate stages Oblivion.esm's `PicUpObjectGround` idle (`0003ECAA`),
+waits 900 milliseconds, revalidates the exact actor and item, then performs the
+already-proven activation transfer. Its receipt advances from `animating` to a
+terminal `completed` or `failed` state. This candidate is compiled and locally
+verified but has not yet been observed in game. It deliberately does not claim
+walking or pathfinding.

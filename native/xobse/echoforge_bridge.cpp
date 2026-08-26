@@ -49,12 +49,23 @@ constexpr UInt32 kFormQuestItemFlag = 0x00000400;
 constexpr UInt32 kReferenceDisabledFlag = 0x00000800;
 constexpr UInt32 kReferenceTakenFlags = 0x00000022;
 constexpr float kMaximumPickupDistanceUnits = 500.0F;
+// Oblivion.esm IDLE record: PicUpObjectGround.
+constexpr UInt32 kPickupGroundIdleFormId = 0x0003ECAA;
+constexpr DWORD kPickupAnimationLeadTimeMs = 900;
 constexpr std::uintptr_t kLookupFormByIdAddress = 0x0046B250;
 constexpr std::uintptr_t kIsOffLimitsToPlayerAddress = 0x004DEBF0;
 
 struct BoundedGameText {
   char value[kMaxGameTextBytes + 1];
   bool present;
+};
+
+struct PendingPickup {
+  bool active;
+  UInt32 actorReferenceFormId;
+  UInt32 itemReferenceFormId;
+  UInt32 itemBaseFormId;
+  DWORD animationStartedAt;
 };
 
 struct PluginInfo {
@@ -138,6 +149,7 @@ bool g_questionSubmitWasPressed = false;
 bool g_questionCancelWasPressed = false;
 UInt32 g_questionTargetFormId = 0;
 UInt32 g_linkedActorFormId = 0;
+PendingPickup g_pendingPickup = {};
 FILETIME g_lastResponseWriteTime = {};
 bool g_responseWatchInitialized = false;
 char g_capturedQuestion[kMaxQuestionBytes + 1] = {};
@@ -540,6 +552,120 @@ bool DispatchPickup(void* itemReference, UInt32 actorReferenceFormId) {
     && g_console->RunScriptLine2(script, itemReference, true);
 }
 
+bool BeginAnimatedPickup(
+  void* actorReference,
+  UInt32 actorReferenceFormId,
+  UInt32 itemReferenceFormId,
+  UInt32 itemBaseFormId
+) {
+  if (g_pendingPickup.active) return false;
+  char script[48] = {};
+  const int written = std::snprintf(
+    script,
+    sizeof(script),
+    "PlayIdle %08X 1",
+    kPickupGroundIdleFormId
+  );
+  const bool animationDispatched = written > 0
+    && static_cast<std::size_t>(written) < sizeof(script)
+    && g_console->RunScriptLine2(script, actorReference, true);
+  if (!animationDispatched) return false;
+  g_pendingPickup = {
+    true,
+    actorReferenceFormId,
+    itemReferenceFormId,
+    itemBaseFormId,
+    GetTickCount()
+  };
+  PublishActionReceipt(
+    actorReferenceFormId,
+    itemReferenceFormId,
+    itemBaseFormId,
+    "animating",
+    "pickup-ground-animation-dispatched"
+  );
+  AppendLog("pickup-ground-animation-dispatched");
+  return true;
+}
+
+void FinishPendingPickup(const char* status, const char* reason, const char* message) {
+  const PendingPickup pickup = g_pendingPickup;
+  g_pendingPickup = {};
+  PublishActionReceipt(
+    pickup.actorReferenceFormId,
+    pickup.itemReferenceFormId,
+    pickup.itemBaseFormId,
+    status,
+    reason
+  );
+  char script[240] = {};
+  const int written = std::snprintf(
+    script,
+    sizeof(script),
+    "MessageBoxEX \"EchoForge: %s\"",
+    message
+  );
+  if (written > 0 && static_cast<std::size_t>(written) < sizeof(script)) {
+    g_console->RunScriptLine2(script, nullptr, true);
+  }
+  AppendLog(reason);
+}
+
+void PollPendingPickup() {
+  if (!g_pendingPickup.active
+      || GetTickCount() - g_pendingPickup.animationStartedAt < kPickupAnimationLeadTimeMs) {
+    return;
+  }
+  void* actorReference = LookupFormById(g_pendingPickup.actorReferenceFormId);
+  void* actorBaseForm = ReadPointerAt(actorReference, kReferenceBaseFormOffset);
+  void* itemReference = LookupFormById(g_pendingPickup.itemReferenceFormId);
+  void* itemBaseForm = ReadPointerAt(itemReference, kReferenceBaseFormOffset);
+  const std::uint8_t actorType = actorBaseForm
+    ? *(static_cast<std::uint8_t*>(actorBaseForm) + kFormTypeOffset)
+    : 0;
+  const std::uint8_t itemType = itemBaseForm
+    ? *(static_cast<std::uint8_t*>(itemBaseForm) + kFormTypeOffset)
+    : 0;
+  if (!actorReference
+      || ReadUInt32At(actorReference, kFormIdOffset) != g_pendingPickup.actorReferenceFormId
+      || actorType != kNpcFormType
+      || !itemReference
+      || ReadUInt32At(itemReference, kFormIdOffset) != g_pendingPickup.itemReferenceFormId
+      || ReadUInt32At(itemBaseForm, kFormIdOffset) != g_pendingPickup.itemBaseFormId
+      || itemType != kIngredientFormType
+      || ReadPointerAt(actorReference, kReferenceParentCellOffset)
+        != ReadPointerAt(itemReference, kReferenceParentCellOffset)
+      || ReferenceDistance(actorReference, itemReference) > kMaximumPickupDistanceUnits) {
+    FinishPendingPickup(
+      "failed",
+      "pickup-state-changed-during-animation",
+      "Pickup stopped because the actor or item moved out of range."
+    );
+    return;
+  }
+  const UInt32 itemFlags = ReadUInt32At(itemReference, 0x08);
+  if ((itemFlags & kReferenceDisabledFlag) != 0
+      || (itemFlags & kReferenceTakenFlags) == kReferenceTakenFlags
+      || (ReadUInt32At(itemBaseForm, 0x08) & kFormQuestItemFlag) != 0
+      || ItemIsOffLimits(itemReference)) {
+    FinishPendingPickup(
+      "failed",
+      "pickup-item-became-unavailable",
+      "Pickup stopped because the item is no longer allowed."
+    );
+    return;
+  }
+  const bool dispatched = DispatchPickup(
+    itemReference,
+    g_pendingPickup.actorReferenceFormId
+  );
+  FinishPendingPickup(
+    dispatched ? "completed" : "failed",
+    dispatched ? "pickup-completed-after-animation" : "pickup-transfer-failed-after-animation",
+    dispatched ? "Animated pickup completed." : "Oblivion rejected the pickup after the animation."
+  );
+}
+
 bool PublishQuestion(UInt32 formId, const char* input) {
   char normalized[kMaxQuestionBytes + 1] = {};
   std::size_t normalizedLength = 0;
@@ -858,6 +984,10 @@ void RejectPickup(
 }
 
 void AttemptPickup() {
+  if (g_pendingPickup.active) {
+    RejectPickup(0, 0, "pickup-already-in-progress", "A pickup is already in progress.");
+    return;
+  }
   if (g_linkedActorFormId == 0) {
     RejectPickup(0, 0, "pickup-no-linked-actor", "Link an NPC with U first.");
     return;
@@ -943,24 +1073,19 @@ void AttemptPickup() {
     return;
   }
 
-  const bool dispatched = DispatchPickup(itemReference, g_linkedActorFormId);
-  PublishActionReceipt(
-    g_linkedActorFormId,
-    itemReferenceFormId,
-    itemBaseFormId,
-    dispatched ? "dispatched" : "failed",
-    dispatched ? "pickup-normal-activation-dispatched" : "pickup-normal-activation-failed"
-  );
-  g_console->RunScriptLine2(
-    dispatched
-      ? "MessageBoxEX \"EchoForge: Pickup dispatched through normal activation.\""
-      : "MessageBoxEX \"EchoForge: Oblivion rejected the pickup.\"",
-    nullptr,
-    true
-  );
-  AppendLog(dispatched
-    ? "pickup-normal-activation-dispatched"
-    : "pickup-normal-activation-failed");
+  if (!BeginAnimatedPickup(
+        actorReference,
+        g_linkedActorFormId,
+        itemReferenceFormId,
+        itemBaseFormId
+      )) {
+    RejectPickup(
+      itemReferenceFormId,
+      itemBaseFormId,
+      "pickup-ground-animation-failed",
+      "Oblivion could not start the pickup animation."
+    );
+  }
 }
 
 bool PollTargetHotkey() {
@@ -968,6 +1093,7 @@ bool PollTargetHotkey() {
     AppendLog("target-hotkey-polling");
     g_inputPollingLogged = true;
   }
+  PollPendingPickup();
   if (g_nativeQuestionActive) {
     PollNativeQuestion();
     return false;
@@ -1003,6 +1129,7 @@ void HandleObseMessage(MessagingInterface::Message* message) {
     AppendLog("save-load-failed");
     return;
   }
+  g_pendingPickup = {};
   g_responseWatchInitialized = false;
   AppendLog("response-stale-replay-suppressed");
 }
