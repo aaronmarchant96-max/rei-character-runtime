@@ -97,7 +97,23 @@ player aims + taps U -> actor-only crosshair lookup -> Form-ID receipt
 player aims + taps Y -> native editor + bounded raw keys -> question.json
                       -> exact identity check -> Ollama -> Piper + response.txt
                       -> fresh-response watch -> in-game MessageBoxEX
+player links NPC + taps I on ingredient
+  -> startup capability gate -> exact-reference policy revalidation
+  -> queuing-movement -> moving -> arrived -> animating
+  -> transferring -> world-state verification -> terminal receipt
 ```
+
+The pickup executor is a deterministic gameplay state machine. The dialogue
+model cannot select coordinates, issue console commands, or advance a phase.
+The adapter owns every transition and removes its temporary movement package
+on completion, interruption, or timeout. `capabilities.json` is refreshed at
+game initialization and after a successful save load; pickup remains disabled
+unless input, console, task queue, native idle, `EchoForge.esp`, and its package
+all resolve for the pinned executable.
+
+The current terminal verification proves only that the exact world reference
+became unavailable after dispatch. Inventory ownership is still confirmed by
+player observation, not yet by a native container query.
 
 Verified in EXP-008:
 

@@ -170,12 +170,14 @@ Claim: an explicit player request can produce one allow-listed action proposal,
 which a deterministic adapter policy either denies or executes against the
 exact observed game references without granting the model console access.
 
-Status: policy contract plus unverified native candidate. The runtime has a
-pure `pick-up-item` gate for an explicit actor/item snapshot. The native bridge
-now supports `U` to link an exact NPC and `I` to select an ingredient, repeats
-the safety checks, and dispatches only normal item activation. The 32-bit DLL
-build passes, but no live pickup has yet been observed; the milestone remains
-open until the receipt and in-game outcome agree.
+Status: policy contract plus a partially observed native executor. The runtime
+has a pure `pick-up-item` gate for an explicit actor/item snapshot. The native
+bridge supports `U` to link an exact NPC and `I` to select an ingredient,
+repeats the safety checks, and dispatches only normal item activation. One live
+run verified a visible pickup gesture and inventory result, but locomotion has
+not yet passed its live acceptance test. The executor now preflights its plugin
+dependencies and records explicit movement, animation, transfer, verification,
+interruption, and terminal states.
 
 Acceptance evidence:
 

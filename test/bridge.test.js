@@ -90,8 +90,18 @@ test("Oblivion pickup dispatch stages a native reach animation before transfer",
   assert.match(source, /pickup-walking-timeout/u);
   assert.match(source, /BeginAnimatedPickup/u);
   assert.match(source, /PollPendingPickup/u);
+  assert.match(source, /enum class PickupPhase/u);
+  assert.match(source, /PickupPhase::Validating/u);
+  assert.match(source, /PickupPhase::QueuingMovement/u);
+  assert.match(source, /PickupPhase::Moving/u);
+  assert.match(source, /PickupPhase::Arrived/u);
+  assert.match(source, /PickupPhase::Animating/u);
+  assert.match(source, /PickupPhase::Transferring/u);
+  assert.match(source, /PickupPhase::Verifying/u);
   assert.match(source, /pickup-ground-animation-native-queued/u);
-  assert.match(source, /pickup-completed-after-animation/u);
+  assert.match(source, /pickup-transfer-dispatched-awaiting-world-state/u);
+  assert.match(source, /pickup-world-state-verified/u);
+  assert.match(source, /pickup-transfer-not-observed/u);
   assert.match(source, /DispatchPickup/u);
   assert.match(source, /"Activate %08X 1"/u);
   assert.match(source, /RunScriptLine2\(script, itemReference, true\)/u);
@@ -101,4 +111,20 @@ test("Oblivion pickup dispatch stages a native reach animation before transfer",
   assert.doesNotMatch(source, /\.MoveTo|SetPos|PositionCell/u);
   assert.doesNotMatch(source, /kActivateActionVirtualIndex/u);
   assert.doesNotMatch(source, /AddItem|RemoveItem|SetStage|ForceActorValue/u);
+});
+
+test("Oblivion pickup preflight fails closed before accepting an action", async () => {
+  const source = await readFile("native/xobse/echoforge_bridge.cpp", "utf8");
+
+  assert.match(source, /struct PickupCapabilities/u);
+  assert.match(source, /RefreshPickupCapabilities/u);
+  assert.match(source, /PickupCapabilitiesReady/u);
+  assert.match(source, /capabilities\.json/u);
+  assert.match(source, /pickup-preflight-ready/u);
+  assert.match(source, /pickup-preflight-movement-plugin-inactive/u);
+  assert.match(source, /pickup-preflight-movement-package-missing/u);
+  assert.match(source, /pickup-preflight-idle-missing/u);
+  assert.match(source, /pickup-preflight-receipt-write-failed/u);
+  assert.match(source, /pickup-preflight-not-ready/u);
+  assert.match(source, /pickup-interrupted-by-save-load/u);
 });

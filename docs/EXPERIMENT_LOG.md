@@ -901,3 +901,32 @@ proximity, and removes it before the verified gesture-and-transfer sequence. A
 12-second timeout removes the package and fails closed. The bridge contains no
 teleport or direct position command. This locomotion candidate is locally
 verified but requires an in-game load and pathfinding test.
+
+The first locomotion attempt failed before movement with
+`pickup-walking-package-failed`; its generic message could not distinguish an
+inactive ESP, an unresolved package, invalid target binding, or command
+rejection. Inspection also found that command-based `SetPackageTarget` rejects
+non-persistent world references in xOBSE, making that handoff unsuitable for an
+ordinary placed ingredient.
+
+## EXP-025 — preflighted pickup lifecycle candidate
+
+- Date: 2026-08-26
+- Candidate base: `a13ad42`
+- Local verification: 61 tests passed; strict 32-bit build passed
+- Live status: not yet tested
+- Mode: source contracts and compiled adapter measured; gameplay result pending
+
+This candidate resolves `EchoForge.esp` through Oblivion's loaded-mod table,
+validates the package record, and binds the exact already-approved item through
+the version-pinned native package layout. It publishes `capabilities.json` at
+initialization and after save load. Pickup fails closed unless the input,
+console, task queue, pickup idle, movement ESP, and movement package are all
+available.
+
+An accepted action now advances through named states: `validating`,
+`queuing-movement`, `moving`, `arrived`, `animating`, `transferring`, and
+`verifying`. Save loads interrupt in-flight work, movement timeouts remove the
+temporary package, and a dispatched transfer is not marked complete until the
+exact world reference becomes unavailable. This does not yet prove locomotion
+or native inventory-container ownership; both remain live acceptance evidence.

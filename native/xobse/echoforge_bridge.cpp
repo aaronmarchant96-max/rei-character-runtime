@@ -78,13 +78,34 @@ struct BoundedGameText {
   bool present;
 };
 
+enum class PickupPhase {
+  Idle,
+  Validating,
+  QueuingMovement,
+  Moving,
+  Arrived,
+  Animating,
+  Transferring,
+  Verifying
+};
+
 struct PendingPickup {
-  bool active;
-  bool walking;
+  PickupPhase phase;
   UInt32 actorReferenceFormId;
   UInt32 itemReferenceFormId;
   UInt32 itemBaseFormId;
   DWORD phaseStartedAt;
+};
+
+struct PickupCapabilities {
+  bool checked;
+  bool inputAvailable;
+  bool consoleAvailable;
+  bool taskQueueAvailable;
+  bool pickupIdleResolved;
+  bool movementPluginActive;
+  bool movementPackageResolved;
+  UInt32 movementPackageFormId;
 };
 
 enum class WalkingPickupStartResult {
@@ -175,7 +196,8 @@ bool g_questionSubmitWasPressed = false;
 bool g_questionCancelWasPressed = false;
 UInt32 g_questionTargetFormId = 0;
 UInt32 g_linkedActorFormId = 0;
-PendingPickup g_pendingPickup = {};
+PendingPickup g_pendingPickup = {PickupPhase::Idle, 0, 0, 0, 0};
+PickupCapabilities g_pickupCapabilities = {};
 FILETIME g_lastResponseWriteTime = {};
 bool g_responseWatchInitialized = false;
 char g_capturedQuestion[kMaxQuestionBytes + 1] = {};
@@ -281,6 +303,45 @@ bool PublishActionReceipt(
     return false;
   }
   return true;
+}
+
+const char* PickupPhaseName(PickupPhase phase) {
+  switch (phase) {
+    case PickupPhase::Validating: return "validating";
+    case PickupPhase::QueuingMovement: return "queuing-movement";
+    case PickupPhase::Moving: return "moving";
+    case PickupPhase::Arrived: return "arrived";
+    case PickupPhase::Animating: return "animating";
+    case PickupPhase::Transferring: return "transferring";
+    case PickupPhase::Verifying: return "verifying";
+    default: return "idle";
+  }
+}
+
+bool PickupIsActive() {
+  return g_pendingPickup.phase != PickupPhase::Idle;
+}
+
+bool PickupIsWalking() {
+  return g_pendingPickup.phase == PickupPhase::QueuingMovement
+    || g_pendingPickup.phase == PickupPhase::Moving;
+}
+
+bool PickupMovementPackageIsApplied() {
+  return g_pendingPickup.phase == PickupPhase::Moving;
+}
+
+void TransitionPickup(PickupPhase phase, const char* reason) {
+  g_pendingPickup.phase = phase;
+  g_pendingPickup.phaseStartedAt = GetTickCount();
+  PublishActionReceipt(
+    g_pendingPickup.actorReferenceFormId,
+    g_pendingPickup.itemReferenceFormId,
+    g_pendingPickup.itemBaseFormId,
+    PickupPhaseName(phase),
+    reason
+  );
+  AppendLog(reason);
 }
 
 bool ReadResponse(char* output, std::size_t capacity) {
@@ -544,9 +605,9 @@ void* LookupFormById(UInt32 formId) {
   return lookup(formId);
 }
 
-void* FindEchoForgePickupPackage(UInt32* packageFormId) {
+bool FindLoadedModIndex(const char* expectedName, UInt32* loadedModIndex) {
   void* dataHandler = *reinterpret_cast<void**>(kDataHandlerPointerAddress);
-  if (!dataHandler) return nullptr;
+  if (!dataHandler) return false;
   for (UInt32 modIndex = 0; modIndex < 0xFF; ++modIndex) {
     void* modData = ReadPointerAt(
       dataHandler,
@@ -556,19 +617,122 @@ void* FindEchoForgePickupPackage(UInt32* packageFormId) {
     const char* modName = reinterpret_cast<const char*>(
       static_cast<std::uint8_t*>(modData) + kModDataNameOffset
     );
-    if (_stricmp(modName, "EchoForge.esp") != 0) continue;
-    const UInt32 fullFormId = (modIndex << 24) | kEchoForgePackageLocalFormId;
-    void* package = LookupFormById(fullFormId);
-    if (!package
-        || *reinterpret_cast<std::uint8_t*>(
-          static_cast<std::uint8_t*>(package) + kFormTypeOffset
-        ) != kPackageFormType) {
-      return nullptr;
-    }
-    *packageFormId = fullFormId;
-    return package;
+    if (_stricmp(modName, expectedName) != 0) continue;
+    *loadedModIndex = modIndex;
+    return true;
   }
-  return nullptr;
+  return false;
+}
+
+void* FindEchoForgePickupPackage(UInt32* packageFormId) {
+  UInt32 modIndex = 0;
+  if (!FindLoadedModIndex("EchoForge.esp", &modIndex)) return nullptr;
+  const UInt32 fullFormId = (modIndex << 24) | kEchoForgePackageLocalFormId;
+  void* package = LookupFormById(fullFormId);
+  if (!package
+      || *reinterpret_cast<std::uint8_t*>(
+        static_cast<std::uint8_t*>(package) + kFormTypeOffset
+      ) != kPackageFormType) {
+    return nullptr;
+  }
+  *packageFormId = fullFormId;
+  return package;
+}
+
+bool PublishPickupCapabilities() {
+  char receiptPath[MAX_PATH] = {};
+  char temporaryPath[MAX_PATH] = {};
+  if (!BuildPath(
+        receiptPath,
+        sizeof(receiptPath),
+        "Data\\OBSE\\Plugins\\EchoForge\\capabilities.json"
+      )
+      || !BuildPath(
+        temporaryPath,
+        sizeof(temporaryPath),
+        "Data\\OBSE\\Plugins\\EchoForge\\capabilities.json.tmp"
+      )) {
+    return false;
+  }
+  char envelope[480] = {};
+  const bool pickupReady = g_pickupCapabilities.inputAvailable
+    && g_pickupCapabilities.consoleAvailable
+    && g_pickupCapabilities.taskQueueAvailable
+    && g_pickupCapabilities.pickupIdleResolved
+    && g_pickupCapabilities.movementPluginActive
+    && g_pickupCapabilities.movementPackageResolved;
+  const int written = std::snprintf(
+    envelope,
+    sizeof(envelope),
+    "{\"schemaVersion\":1,\"gameVersion\":\"1.2.0.416\","
+    "\"inputAvailable\":%s,\"consoleAvailable\":%s,\"taskQueueAvailable\":%s,"
+    "\"pickupIdleResolved\":%s,\"movementPluginActive\":%s,"
+    "\"movementPackageResolved\":%s,\"movementPackageFormId\":\"%08X\","
+    "\"pickupReady\":%s}",
+    g_pickupCapabilities.inputAvailable ? "true" : "false",
+    g_pickupCapabilities.consoleAvailable ? "true" : "false",
+    g_pickupCapabilities.taskQueueAvailable ? "true" : "false",
+    g_pickupCapabilities.pickupIdleResolved ? "true" : "false",
+    g_pickupCapabilities.movementPluginActive ? "true" : "false",
+    g_pickupCapabilities.movementPackageResolved ? "true" : "false",
+    g_pickupCapabilities.movementPackageFormId,
+    pickupReady ? "true" : "false"
+  );
+  if (written <= 0 || static_cast<std::size_t>(written) >= sizeof(envelope)) return false;
+  FILE* file = std::fopen(temporaryPath, "wb");
+  if (!file) return false;
+  const std::size_t length = static_cast<std::size_t>(written);
+  const bool wrote = std::fwrite(envelope, 1, length, file) == length
+    && std::fflush(file) == 0;
+  const bool closed = std::fclose(file) == 0;
+  if (!wrote || !closed) {
+    DeleteFileA(temporaryPath);
+    return false;
+  }
+  return MoveFileExA(
+    temporaryPath,
+    receiptPath,
+    MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+  );
+}
+
+bool PickupCapabilitiesReady() {
+  return g_pickupCapabilities.checked
+    && g_pickupCapabilities.inputAvailable
+    && g_pickupCapabilities.consoleAvailable
+    && g_pickupCapabilities.taskQueueAvailable
+    && g_pickupCapabilities.pickupIdleResolved
+    && g_pickupCapabilities.movementPluginActive
+    && g_pickupCapabilities.movementPackageResolved;
+}
+
+void RefreshPickupCapabilities() {
+  UInt32 modIndex = 0;
+  UInt32 packageFormId = 0;
+  g_pickupCapabilities = {
+    true,
+    g_input != nullptr,
+    g_console != nullptr,
+    g_tasks != nullptr,
+    LookupFormById(kPickupGroundIdleFormId) != nullptr,
+    FindLoadedModIndex("EchoForge.esp", &modIndex),
+    FindEchoForgePickupPackage(&packageFormId) != nullptr,
+    packageFormId
+  };
+  if (!PublishPickupCapabilities()) {
+    AppendLog("pickup-preflight-receipt-write-failed");
+  }
+  if (PickupCapabilitiesReady()) {
+    AppendLog("pickup-preflight-ready");
+  } else if (!g_pickupCapabilities.movementPluginActive) {
+    AppendLog("pickup-preflight-movement-plugin-inactive");
+  } else if (!g_pickupCapabilities.movementPackageResolved) {
+    AppendLog("pickup-preflight-movement-package-missing");
+  } else if (!g_pickupCapabilities.pickupIdleResolved) {
+    AppendLog("pickup-preflight-idle-missing");
+  } else {
+    AppendLog("pickup-preflight-runtime-interface-missing");
+  }
 }
 
 bool SetEchoForgePackageTarget(void* package, void* itemReference) {
@@ -665,40 +829,18 @@ bool DispatchPickupAnimation(void* actorReference) {
   return true;
 }
 
-bool BeginAnimatedPickup(
-  void* actorReference,
-  UInt32 actorReferenceFormId,
-  UInt32 itemReferenceFormId,
-  UInt32 itemBaseFormId
-) {
-  if (g_pendingPickup.active) return false;
+bool BeginAnimatedPickup(void* actorReference) {
   const bool animationDispatched = DispatchPickupAnimation(actorReference);
   if (!animationDispatched) return false;
-  g_pendingPickup = {
-    true,
-    false,
-    actorReferenceFormId,
-    itemReferenceFormId,
-    itemBaseFormId,
-    GetTickCount()
-  };
-  PublishActionReceipt(
-    actorReferenceFormId,
-    itemReferenceFormId,
-    itemBaseFormId,
-    "animating",
-    "pickup-ground-animation-native-queued"
-  );
+  TransitionPickup(PickupPhase::Animating, "pickup-ground-animation-native-queued");
   return true;
 }
 
 WalkingPickupStartResult BeginWalkingPickup(
   void* actorReference,
-  UInt32 actorReferenceFormId,
-  UInt32 itemReferenceFormId,
-  UInt32 itemBaseFormId
+  UInt32 itemReferenceFormId
 ) {
-  if (g_pendingPickup.active) return WalkingPickupStartResult::StartCommandFailed;
+  TransitionPickup(PickupPhase::QueuingMovement, "pickup-movement-queue-requested");
   UInt32 packageFormId = 0;
   void* package = FindEchoForgePickupPackage(&packageFormId);
   if (!package) {
@@ -728,29 +870,15 @@ WalkingPickupStartResult BeginWalkingPickup(
     AppendLog("pickup-walking-package-start-command-failed");
     return WalkingPickupStartResult::StartCommandFailed;
   }
-  g_pendingPickup = {
-    true,
-    true,
-    actorReferenceFormId,
-    itemReferenceFormId,
-    itemBaseFormId,
-    GetTickCount()
-  };
-  PublishActionReceipt(
-    actorReferenceFormId,
-    itemReferenceFormId,
-    itemBaseFormId,
-    "walking",
-    "pickup-walking-package-started"
-  );
-  AppendLog("pickup-walking-package-started");
+  TransitionPickup(PickupPhase::Moving, "pickup-walking-package-started");
   return WalkingPickupStartResult::Started;
 }
 
 void FinishPendingPickup(const char* status, const char* reason, const char* message) {
   const PendingPickup pickup = g_pendingPickup;
-  g_pendingPickup = {};
-  if (pickup.walking) {
+  const bool packageMayBeActive = PickupMovementPackageIsApplied();
+  g_pendingPickup = {PickupPhase::Idle, 0, 0, 0, 0};
+  if (packageMayBeActive) {
     void* actorReference = LookupFormById(pickup.actorReferenceFormId);
     if (actorReference) {
       g_console->RunScriptLine2("RemoveScriptPackage", actorReference, true);
@@ -777,7 +905,7 @@ void FinishPendingPickup(const char* status, const char* reason, const char* mes
 }
 
 void PollPendingPickup() {
-  if (!g_pendingPickup.active) return;
+  if (!PickupIsActive()) return;
   void* actorReference = LookupFormById(g_pendingPickup.actorReferenceFormId);
   void* actorBaseForm = ReadPointerAt(actorReference, kReferenceBaseFormOffset);
   void* itemReference = LookupFormById(g_pendingPickup.itemReferenceFormId);
@@ -790,15 +918,31 @@ void PollPendingPickup() {
     : 0;
   if (!actorReference
       || ReadUInt32At(actorReference, kFormIdOffset) != g_pendingPickup.actorReferenceFormId
-      || actorType != kNpcFormType
-      || !itemReference
+      || actorType != kNpcFormType) {
+    FinishPendingPickup(
+      "interrupted",
+      "pickup-actor-became-unavailable",
+      "Pickup stopped because the linked NPC became unavailable."
+    );
+    return;
+  }
+  if (!itemReference && (PickupMovementPackageIsApplied()
+      || g_pendingPickup.phase == PickupPhase::Verifying)) {
+    FinishPendingPickup(
+      "completed",
+      "pickup-world-state-verified",
+      "NPC pickup completed and the world item is no longer present."
+    );
+    return;
+  }
+  if (!itemReference
       || ReadUInt32At(itemReference, kFormIdOffset) != g_pendingPickup.itemReferenceFormId
       || ReadUInt32At(itemBaseForm, kFormIdOffset) != g_pendingPickup.itemBaseFormId
       || itemType != kIngredientFormType
       || ReadPointerAt(actorReference, kReferenceParentCellOffset)
         != ReadPointerAt(itemReference, kReferenceParentCellOffset)) {
     FinishPendingPickup(
-      "failed",
+      "interrupted",
       "pickup-state-changed-during-animation",
       "Pickup stopped because the actor or item moved out of range."
     );
@@ -807,13 +951,15 @@ void PollPendingPickup() {
   const UInt32 itemFlags = ReadUInt32At(itemReference, 0x08);
   if ((itemFlags & kReferenceDisabledFlag) != 0
       || (itemFlags & kReferenceTakenFlags) == kReferenceTakenFlags) {
+    const bool completionExpected = PickupIsWalking()
+      || g_pendingPickup.phase == PickupPhase::Verifying;
     FinishPendingPickup(
-      g_pendingPickup.walking ? "completed" : "failed",
-      g_pendingPickup.walking
-        ? "pickup-completed-by-ai-package"
+      completionExpected ? "completed" : "failed",
+      completionExpected
+        ? "pickup-world-state-verified"
         : "pickup-item-became-unavailable",
-      g_pendingPickup.walking
-        ? "NPC pickup completed through Oblivion pathfinding."
+      completionExpected
+        ? "NPC pickup completed and the world item is no longer present."
         : "Pickup stopped because the item is no longer available."
     );
     return;
@@ -836,7 +982,7 @@ void PollPendingPickup() {
     );
     return;
   }
-  if (g_pendingPickup.walking) {
+  if (PickupIsWalking()) {
     if (GetTickCount() - g_pendingPickup.phaseStartedAt >= kPickupWalkingTimeoutMs) {
       FinishPendingPickup(
         "failed",
@@ -846,38 +992,44 @@ void PollPendingPickup() {
       return;
     }
     if (distance > kPickupGestureDistanceUnits) return;
-    const PendingPickup pickup = g_pendingPickup;
+    TransitionPickup(PickupPhase::Arrived, "pickup-arrival-distance-confirmed");
     g_console->RunScriptLine2("RemoveScriptPackage", actorReference, true);
-    g_pendingPickup = {};
-    if (!BeginAnimatedPickup(
-          actorReference,
-          pickup.actorReferenceFormId,
-          pickup.itemReferenceFormId,
-          pickup.itemBaseFormId
-        )) {
-      PublishActionReceipt(
-        pickup.actorReferenceFormId,
-        pickup.itemReferenceFormId,
-        pickup.itemBaseFormId,
+    if (!BeginAnimatedPickup(actorReference)) {
+      FinishPendingPickup(
         "failed",
-        "pickup-ground-animation-failed-after-walk"
+        "pickup-ground-animation-failed-after-walk",
+        "Oblivion could not start the pickup animation after arrival."
       );
-      AppendLog("pickup-ground-animation-failed-after-walk");
+    }
+    return;
+  }
+  if (g_pendingPickup.phase == PickupPhase::Verifying) {
+    if (GetTickCount() - g_pendingPickup.phaseStartedAt >= 500) {
+      FinishPendingPickup(
+        "failed",
+        "pickup-transfer-not-observed",
+        "The pickup command ran, but the world item remained present."
+      );
     }
     return;
   }
   if (GetTickCount() - g_pendingPickup.phaseStartedAt < kPickupAnimationLeadTimeMs) {
     return;
   }
+  TransitionPickup(PickupPhase::Transferring, "pickup-transfer-requested");
   const bool dispatched = DispatchPickup(
     itemReference,
     g_pendingPickup.actorReferenceFormId
   );
-  FinishPendingPickup(
-    dispatched ? "completed" : "failed",
-    dispatched ? "pickup-completed-after-animation" : "pickup-transfer-failed-after-animation",
-    dispatched ? "Animated pickup completed." : "Oblivion rejected the pickup after the animation."
-  );
+  if (!dispatched) {
+    FinishPendingPickup(
+      "failed",
+      "pickup-transfer-failed-after-animation",
+      "Oblivion rejected the pickup after the animation."
+    );
+    return;
+  }
+  TransitionPickup(PickupPhase::Verifying, "pickup-transfer-dispatched-awaiting-world-state");
 }
 
 bool PublishQuestion(UInt32 formId, const char* input) {
@@ -1198,8 +1350,18 @@ void RejectPickup(
 }
 
 void AttemptPickup() {
-  if (g_pendingPickup.active) {
+  if (PickupIsActive()) {
     RejectPickup(0, 0, "pickup-already-in-progress", "A pickup is already in progress.");
+    return;
+  }
+  if (!g_pickupCapabilities.checked) RefreshPickupCapabilities();
+  if (!PickupCapabilitiesReady()) {
+    RejectPickup(
+      0,
+      0,
+      "pickup-preflight-not-ready",
+      "Pickup is disabled because an EchoForge startup dependency is unavailable."
+    );
     return;
   }
   if (g_linkedActorFormId == 0) {
@@ -1288,20 +1450,21 @@ void AttemptPickup() {
   }
 
   const float distance = ReferenceDistance(actorReference, itemReference);
+  g_pendingPickup = {
+    PickupPhase::Validating,
+    g_linkedActorFormId,
+    itemReferenceFormId,
+    itemBaseFormId,
+    GetTickCount()
+  };
+  TransitionPickup(PickupPhase::Validating, "pickup-policy-revalidated-in-game");
   WalkingPickupStartResult walkingResult = WalkingPickupStartResult::Started;
   const bool started = distance > kPickupGestureDistanceUnits
     ? (walkingResult = BeginWalkingPickup(
       actorReference,
-      g_linkedActorFormId,
-      itemReferenceFormId,
-      itemBaseFormId
+      itemReferenceFormId
     )) == WalkingPickupStartResult::Started
-    : BeginAnimatedPickup(
-      actorReference,
-      g_linkedActorFormId,
-      itemReferenceFormId,
-      itemBaseFormId
-    );
+    : BeginAnimatedPickup(actorReference);
   if (!started) {
     const bool walking = distance > kPickupGestureDistanceUnits;
     const char* failureReason = "pickup-ground-animation-failed";
@@ -1318,9 +1481,8 @@ void AttemptPickup() {
         failureMessage = "Oblivion rejected the EchoForge movement package.";
       }
     }
-    RejectPickup(
-      itemReferenceFormId,
-      itemBaseFormId,
+    FinishPendingPickup(
+      "failed",
       failureReason,
       failureMessage
     );
@@ -1355,6 +1517,7 @@ void HandleObseMessage(MessagingInterface::Message* message) {
   if (!message) return;
   if (message->type == kMessageGameInitialized) {
     AppendLog("game-initialized");
+    RefreshPickupCapabilities();
     if (!g_targetHotkeyTask || !g_tasks->IsTaskPresentRemovable(g_targetHotkeyTask)) {
       g_targetHotkeyTask = g_tasks->EnqueueTaskRemovable(PollTargetHotkey);
       AppendLog(g_targetHotkeyTask
@@ -1368,7 +1531,18 @@ void HandleObseMessage(MessagingInterface::Message* message) {
     AppendLog("save-load-failed");
     return;
   }
-  g_pendingPickup = {};
+  if (PickupIsActive()) {
+    PublishActionReceipt(
+      g_pendingPickup.actorReferenceFormId,
+      g_pendingPickup.itemReferenceFormId,
+      g_pendingPickup.itemBaseFormId,
+      "interrupted",
+      "pickup-interrupted-by-save-load"
+    );
+    AppendLog("pickup-interrupted-by-save-load");
+  }
+  g_pendingPickup = {PickupPhase::Idle, 0, 0, 0, 0};
+  RefreshPickupCapabilities();
   g_responseWatchInitialized = false;
   AppendLog("response-stale-replay-suppressed");
 }
