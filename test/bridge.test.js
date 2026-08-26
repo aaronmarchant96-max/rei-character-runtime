@@ -63,6 +63,7 @@ test("Oblivion bridge uses xOBSE-native text input instead of an OS window", asy
 
 test("Oblivion pickup dispatch stages a native reach animation before transfer", async () => {
   const source = await readFile("native/xobse/echoforge_bridge.cpp", "utf8");
+  const stateSource = await readFile("native/xobse/pickup_state.h", "utf8");
 
   assert.match(source, /kIScanCode/u);
   assert.match(source, /g_linkedActorFormId/u);
@@ -90,14 +91,18 @@ test("Oblivion pickup dispatch stages a native reach animation before transfer",
   assert.match(source, /pickup-walking-timeout/u);
   assert.match(source, /BeginAnimatedPickup/u);
   assert.match(source, /PollPendingPickup/u);
-  assert.match(source, /enum class PickupPhase/u);
-  assert.match(source, /PickupPhase::Validating/u);
-  assert.match(source, /PickupPhase::QueuingMovement/u);
-  assert.match(source, /PickupPhase::Moving/u);
-  assert.match(source, /PickupPhase::Arrived/u);
-  assert.match(source, /PickupPhase::Animating/u);
-  assert.match(source, /PickupPhase::Transferring/u);
-  assert.match(source, /PickupPhase::Verifying/u);
+  assert.match(source, /#include "pickup_state\.h"/u);
+  assert.match(source, /NextPickupState/u);
+  assert.match(stateSource, /enum class PickupPhase/u);
+  assert.match(stateSource, /PickupPhase::Validating/u);
+  assert.match(stateSource, /PickupPhase::QueuingMovement/u);
+  assert.match(stateSource, /PickupPhase::Moving/u);
+  assert.match(stateSource, /PickupPhase::Arrived/u);
+  assert.match(stateSource, /PickupPhase::Animating/u);
+  assert.match(stateSource, /PickupPhase::Transferring/u);
+  assert.match(stateSource, /PickupPhase::Verifying/u);
+  assert.match(stateSource, /PickupPhase::Completed/u);
+  assert.match(stateSource, /PickupPhase::Interrupted/u);
   assert.match(source, /pickup-ground-animation-native-queued/u);
   assert.match(source, /pickup-transfer-dispatched-awaiting-world-state/u);
   assert.match(source, /pickup-world-state-verified/u);

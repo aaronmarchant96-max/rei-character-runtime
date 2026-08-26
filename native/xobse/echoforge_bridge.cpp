@@ -5,12 +5,17 @@
 #include <cstdio>
 #include <cstring>
 
+#include "pickup_state.h"
 #include "question_keys.h"
 
 namespace {
 
 using UInt32 = std::uint32_t;
 using PluginHandle = UInt32;
+using echoforge::NextPickupState;
+using echoforge::PickupEvent;
+using echoforge::PickupPhase;
+using echoforge::PickupTransition;
 
 constexpr UInt32 kPluginInfoVersion = 3;
 constexpr UInt32 kMinimumObseVersion = 22;
@@ -76,17 +81,6 @@ constexpr std::size_t kPackageTargetCountOffset = 0x08;
 struct BoundedGameText {
   char value[kMaxGameTextBytes + 1];
   bool present;
-};
-
-enum class PickupPhase {
-  Idle,
-  Validating,
-  QueuingMovement,
-  Moving,
-  Arrived,
-  Animating,
-  Transferring,
-  Verifying
 };
 
 struct PendingPickup {
@@ -314,12 +308,15 @@ const char* PickupPhaseName(PickupPhase phase) {
     case PickupPhase::Animating: return "animating";
     case PickupPhase::Transferring: return "transferring";
     case PickupPhase::Verifying: return "verifying";
+    case PickupPhase::Completed: return "completed";
+    case PickupPhase::Failed: return "failed";
+    case PickupPhase::Interrupted: return "interrupted";
     default: return "idle";
   }
 }
 
 bool PickupIsActive() {
-  return g_pendingPickup.phase != PickupPhase::Idle;
+  return echoforge::IsActivePickupPhase(g_pendingPickup.phase);
 }
 
 bool PickupIsWalking() {
@@ -331,17 +328,23 @@ bool PickupMovementPackageIsApplied() {
   return g_pendingPickup.phase == PickupPhase::Moving;
 }
 
-void TransitionPickup(PickupPhase phase, const char* reason) {
-  g_pendingPickup.phase = phase;
+PickupTransition TransitionPickup(PickupEvent event, const char* reason) {
+  const PickupTransition transition = NextPickupState(g_pendingPickup.phase, event);
+  if (!transition.accepted) {
+    AppendLog("pickup-invalid-state-transition");
+    return transition;
+  }
+  g_pendingPickup.phase = transition.next;
   g_pendingPickup.phaseStartedAt = GetTickCount();
   PublishActionReceipt(
     g_pendingPickup.actorReferenceFormId,
     g_pendingPickup.itemReferenceFormId,
     g_pendingPickup.itemBaseFormId,
-    PickupPhaseName(phase),
+    PickupPhaseName(transition.next),
     reason
   );
   AppendLog(reason);
+  return transition;
 }
 
 bool ReadResponse(char* output, std::size_t capacity) {
@@ -832,15 +835,22 @@ bool DispatchPickupAnimation(void* actorReference) {
 bool BeginAnimatedPickup(void* actorReference) {
   const bool animationDispatched = DispatchPickupAnimation(actorReference);
   if (!animationDispatched) return false;
-  TransitionPickup(PickupPhase::Animating, "pickup-ground-animation-native-queued");
-  return true;
+  return TransitionPickup(
+    PickupEvent::AnimationQueued,
+    "pickup-ground-animation-native-queued"
+  ).accepted;
 }
 
 WalkingPickupStartResult BeginWalkingPickup(
   void* actorReference,
   UInt32 itemReferenceFormId
 ) {
-  TransitionPickup(PickupPhase::QueuingMovement, "pickup-movement-queue-requested");
+  if (!TransitionPickup(
+        PickupEvent::RequestMovement,
+        "pickup-movement-queue-requested"
+      ).accepted) {
+    return WalkingPickupStartResult::StartCommandFailed;
+  }
   UInt32 packageFormId = 0;
   void* package = FindEchoForgePickupPackage(&packageFormId);
   if (!package) {
@@ -870,13 +880,30 @@ WalkingPickupStartResult BeginWalkingPickup(
     AppendLog("pickup-walking-package-start-command-failed");
     return WalkingPickupStartResult::StartCommandFailed;
   }
-  TransitionPickup(PickupPhase::Moving, "pickup-walking-package-started");
+  if (!TransitionPickup(
+        PickupEvent::MovementStarted,
+        "pickup-walking-package-started"
+      ).accepted) {
+    g_console->RunScriptLine2("RemoveScriptPackage", actorReference, true);
+    return WalkingPickupStartResult::StartCommandFailed;
+  }
   return WalkingPickupStartResult::Started;
 }
 
 void FinishPendingPickup(const char* status, const char* reason, const char* message) {
   const PendingPickup pickup = g_pendingPickup;
-  const bool packageMayBeActive = PickupMovementPackageIsApplied();
+  PickupEvent terminalEvent = PickupEvent::Fail;
+  if (std::strcmp(status, "completed") == 0) {
+    terminalEvent = PickupEvent::WorldItemUnavailable;
+  } else if (std::strcmp(status, "interrupted") == 0) {
+    terminalEvent = PickupEvent::Interrupt;
+  } else if (std::strcmp(reason, "pickup-walking-timeout") == 0) {
+    terminalEvent = PickupEvent::Timeout;
+  }
+  const PickupTransition terminal = NextPickupState(pickup.phase, terminalEvent);
+  const bool packageMayBeActive = terminal.accepted
+    ? terminal.removeMovementPackage
+    : PickupMovementPackageIsApplied();
   g_pendingPickup = {PickupPhase::Idle, 0, 0, 0, 0};
   if (packageMayBeActive) {
     void* actorReference = LookupFormById(pickup.actorReferenceFormId);
@@ -992,8 +1019,21 @@ void PollPendingPickup() {
       return;
     }
     if (distance > kPickupGestureDistanceUnits) return;
-    TransitionPickup(PickupPhase::Arrived, "pickup-arrival-distance-confirmed");
-    g_console->RunScriptLine2("RemoveScriptPackage", actorReference, true);
+    const PickupTransition arrival = TransitionPickup(
+      PickupEvent::ArrivalConfirmed,
+      "pickup-arrival-distance-confirmed"
+    );
+    if (!arrival.accepted) {
+      FinishPendingPickup(
+        "failed",
+        "pickup-invalid-arrival-transition",
+        "Pickup stopped because its lifecycle state was invalid."
+      );
+      return;
+    }
+    if (arrival.removeMovementPackage) {
+      g_console->RunScriptLine2("RemoveScriptPackage", actorReference, true);
+    }
     if (!BeginAnimatedPickup(actorReference)) {
       FinishPendingPickup(
         "failed",
@@ -1016,7 +1056,17 @@ void PollPendingPickup() {
   if (GetTickCount() - g_pendingPickup.phaseStartedAt < kPickupAnimationLeadTimeMs) {
     return;
   }
-  TransitionPickup(PickupPhase::Transferring, "pickup-transfer-requested");
+  if (!TransitionPickup(
+        PickupEvent::TransferRequested,
+        "pickup-transfer-requested"
+      ).accepted) {
+    FinishPendingPickup(
+      "failed",
+      "pickup-invalid-transfer-transition",
+      "Pickup stopped because its lifecycle state was invalid."
+    );
+    return;
+  }
   const bool dispatched = DispatchPickup(
     itemReference,
     g_pendingPickup.actorReferenceFormId
@@ -1029,7 +1079,16 @@ void PollPendingPickup() {
     );
     return;
   }
-  TransitionPickup(PickupPhase::Verifying, "pickup-transfer-dispatched-awaiting-world-state");
+  if (!TransitionPickup(
+        PickupEvent::TransferDispatched,
+        "pickup-transfer-dispatched-awaiting-world-state"
+      ).accepted) {
+    FinishPendingPickup(
+      "failed",
+      "pickup-invalid-verification-transition",
+      "Pickup stopped because its lifecycle state was invalid."
+    );
+  }
 }
 
 bool PublishQuestion(UInt32 formId, const char* input) {
@@ -1451,13 +1510,23 @@ void AttemptPickup() {
 
   const float distance = ReferenceDistance(actorReference, itemReference);
   g_pendingPickup = {
-    PickupPhase::Validating,
+    PickupPhase::Idle,
     g_linkedActorFormId,
     itemReferenceFormId,
     itemBaseFormId,
     GetTickCount()
   };
-  TransitionPickup(PickupPhase::Validating, "pickup-policy-revalidated-in-game");
+  if (!TransitionPickup(
+        PickupEvent::BeginValidation,
+        "pickup-policy-revalidated-in-game"
+      ).accepted) {
+    FinishPendingPickup(
+      "failed",
+      "pickup-invalid-validation-transition",
+      "Pickup could not enter its validation state."
+    );
+    return;
+  }
   WalkingPickupStartResult walkingResult = WalkingPickupStartResult::Started;
   const bool started = distance > kPickupGestureDistanceUnits
     ? (walkingResult = BeginWalkingPickup(
@@ -1532,6 +1601,10 @@ void HandleObseMessage(MessagingInterface::Message* message) {
     return;
   }
   if (PickupIsActive()) {
+    const PickupTransition interrupted = NextPickupState(
+      g_pendingPickup.phase,
+      PickupEvent::SaveLoaded
+    );
     PublishActionReceipt(
       g_pendingPickup.actorReferenceFormId,
       g_pendingPickup.itemReferenceFormId,
@@ -1539,7 +1612,9 @@ void HandleObseMessage(MessagingInterface::Message* message) {
       "interrupted",
       "pickup-interrupted-by-save-load"
     );
-    AppendLog("pickup-interrupted-by-save-load");
+    AppendLog(interrupted.accepted
+      ? "pickup-interrupted-by-save-load"
+      : "pickup-invalid-save-load-transition");
   }
   g_pendingPickup = {PickupPhase::Idle, 0, 0, 0, 0};
   RefreshPickupCapabilities();

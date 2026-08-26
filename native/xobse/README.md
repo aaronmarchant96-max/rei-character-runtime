@@ -58,3 +58,13 @@ compiled and locally verified but has not yet been observed in game. The model
 cannot supply script text, package identifiers, or bypass the fixed checks.
 Existing `response.txt` content is treated as stale when a save loads and is
 not replayed; only a later file change can display a dialogue response.
+
+## Native lifecycle verification
+
+`pickup_state.h` contains the engine-independent pickup transition reducer used
+by the live bridge. `npm test` compiles and runs one lifecycle oracle against
+the real reducer and four deliberately unsafe mutants. The oracle rejects early
+completion before verification, removal of a package that was never applied,
+ignored save-load interruption, and overlapping pickup actions. This proves the
+state and cleanup rules locally; it does not substitute for live pathfinding,
+animation, or inventory observation.

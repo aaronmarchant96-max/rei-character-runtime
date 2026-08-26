@@ -930,3 +930,21 @@ An accepted action now advances through named states: `validating`,
 temporary package, and a dispatched transfer is not marked complete until the
 exact world reference becomes unavailable. This does not yet prove locomotion
 or native inventory-container ownership; both remain live acceptance evidence.
+
+## EXP-026 — lifecycle mutation controls
+
+- Date: 2026-08-26
+- Parent candidate: `d919a3d`
+- Local verification: 62 tests passed; strict native test and 32-bit bridge
+  builds passed with warnings treated as errors
+- Live status: no gameplay claim added
+- Mode: deterministic native reducer and synthetic unsafe mutations
+
+The pickup phases and transition rules now live in the engine-independent
+`pickup_state.h` reducer used by the xOBSE bridge. One oracle accepts the full
+movement-to-verification lifecycle and rejects four mutations: completion at
+dispatch rather than observation, removal of an unapplied movement package,
+ignored save-load interruption, and acceptance of a second overlapping action.
+This transfers REI AI's single-oracle mutation-control pattern into EchoForge.
+It establishes that the local test can discriminate these unsafe lifecycle
+implementations; it does not establish that Oblivion will pathfind successfully.
