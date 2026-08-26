@@ -977,3 +977,32 @@ the reviewed Nels voice, a 250 ms dialogue ceiling, no system-language leakage,
 and no model action authority. This establishes one evidence-to-replay loop. It
 does not establish general lore correctness, improved intelligence across NPCs,
 audible voice quality, or successful Oblivion locomotion.
+
+## EXP-028 — local human review queue closes the first flywheel loop
+
+- Date: 2026-08-26
+- Local verification: 70 tests passed; syntax and native checks passed; the
+  existing `nels-family` replay remained green
+- Queue smoke test: the CLI found 10 historical spoken turns, displayed the
+  newest session's first turn with its measured receipts and two automatic
+  signals, then quit without recording a decision
+- Mutation/control coverage: deterministic interaction hashes change with the
+  response; reviewed items leave the pending queue; skipped items are not
+  recorded; rejected reviews require an allow-listed reason; fixture promotion
+  rejects a review from a different interaction
+- Mode: deterministic local tests and read-only inspection of ignored session
+  evidence; no new human quality decision was recorded during verification
+
+`npm run evidence:review -- --reviewer=<name>` now presents recorded turns with
+their question, response, support mode, fact keys, route/provider, dialogue
+latency, voice selection/status/latency, and automatic signals. One key accepts,
+classifies a rejection, skips, or quits. Rejection reasons form a bounded first
+taxonomy: wrong lore, wrong voice, excessive latency, broken character,
+irrelevance, unsafe action, or other.
+
+Review records contain a content-addressed interaction ID and evidence summary,
+but do not duplicate the dialogue. Acceptance creates an ignored local replay
+candidate; it cannot modify the checked-in fixture corpus. This completes a
+usable capture-classify-review-candidate-replay loop. It does not yet aggregate
+failure cohorts, generate policy proposals, or prove that repeated use improves
+response quality.

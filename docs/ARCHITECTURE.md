@@ -55,6 +55,10 @@ action is data; it is never proof that the action is permitted.
 - `src/interaction-evidence.js` converts observable receipt fields into bounded
   failure signals and evaluates human-accepted replay fixtures. It does not
   infer lore truth or assign a subjective quality score.
+- `src/evidence-review.js` assigns content-addressed interaction IDs, creates
+  accepted/rejected review records, removes reviewed turns from the pending
+  queue, and promotes only an exactly matching accepted record into a local
+  fixture candidate.
 - `src/memory.js` isolates memory by exact character ID, atomically retains the
   last 24 successful turns, selects at most four relevant/recent turns under a
   1,600-character prompt budget, and derives a measured familiarity tier from
@@ -285,3 +289,9 @@ answer mode, exact fact keys, route/provider, grounding, latency-path ceiling,
 voice selection, forbidden system language, and action authority. It does not
 claim that lexical checks prove semantic truth or that silent replay proves
 audio quality.
+
+`npm run evidence:review` is the human decision boundary. Reviews contain the
+content hash, source line, reviewer, decision, flags, and evidence summary but
+do not duplicate the dialogue text. Accepted candidates and the append-only
+review ledger remain under ignored `.local` paths. Moving a reviewed candidate
+into `fixtures/replay` is a separate, visible repository decision.

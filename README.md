@@ -225,6 +225,19 @@ prepared-path latency ceiling, selected voice, prohibited system language, and
 zero model action authority. Live audio quality and gameplay behavior remain
 human-observed measurements rather than replay claims.
 
+Review recorded play with:
+
+```bash
+npm run evidence:review -- --reviewer=aaron
+```
+
+The queue starts with the newest session and shows the question, response,
+grounding support, route, measured dialogue and voice latency, selected voice,
+and automatic warning signals. Accepting creates an ignored candidate under
+`.local/replay-candidates`; rejecting requires a lore, voice, latency,
+character, relevance, safety, or other flag. Skipping records nothing, and no
+candidate enters the checked-in replay corpus automatically.
+
 ## Architecture
 
 ```mermaid
