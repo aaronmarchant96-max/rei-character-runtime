@@ -52,6 +52,13 @@ constexpr float kMaximumPickupDistanceUnits = 500.0F;
 // Oblivion.esm IDLE record: PicUpObjectGround.
 constexpr UInt32 kPickupGroundIdleFormId = 0x0003ECAA;
 constexpr DWORD kPickupAnimationLeadTimeMs = 900;
+constexpr std::uint8_t kIdleFormType = 0x3C;
+constexpr std::uintptr_t kActorVirtualTableAddress = 0x00A6E074;
+constexpr std::size_t kGetActorAnimDataVirtualOffset = 0x164;
+constexpr std::uintptr_t kQueueIdleAddress = 0x00477DB0;
+constexpr std::size_t kIdleAnimFlagsOffset = 0x38;
+constexpr UInt32 kIdleAnimFlagsMask = 0x7F;
+constexpr UInt32 kIdleQueueMode = 3;
 constexpr std::uintptr_t kLookupFormByIdAddress = 0x0046B250;
 constexpr std::uintptr_t kIsOffLimitsToPlayerAddress = 0x004DEBF0;
 
@@ -552,6 +559,51 @@ bool DispatchPickup(void* itemReference, UInt32 actorReferenceFormId) {
     && g_console->RunScriptLine2(script, itemReference, true);
 }
 
+bool DispatchPickupAnimation(void* actorReference) {
+  void* idleForm = LookupFormById(kPickupGroundIdleFormId);
+  if (!idleForm
+      || ReadUInt32At(idleForm, kFormIdOffset) != kPickupGroundIdleFormId
+      || *(static_cast<std::uint8_t*>(idleForm) + kFormTypeOffset) != kIdleFormType) {
+    AppendLog("pickup-ground-idle-form-unavailable");
+    return false;
+  }
+  using GetActorAnimDataFunction = void* (__attribute__((thiscall)) *)(void* actor);
+  const std::uintptr_t getActorAnimDataAddress = *reinterpret_cast<std::uintptr_t*>(
+    kActorVirtualTableAddress + kGetActorAnimDataVirtualOffset
+  );
+  if (getActorAnimDataAddress == 0) {
+    AppendLog("pickup-actor-animation-function-unavailable");
+    return false;
+  }
+  const auto getActorAnimData = reinterpret_cast<GetActorAnimDataFunction>(
+    getActorAnimDataAddress
+  );
+  void* actorAnimData = getActorAnimData(actorReference);
+  if (!actorAnimData) {
+    AppendLog("pickup-actor-animation-data-unavailable");
+    return false;
+  }
+  using QueueIdleFunction = void (__attribute__((thiscall)) *)(
+    void* actorAnimData,
+    void* idleForm,
+    void* actorReference,
+    UInt32 animationFlags,
+    UInt32 queueMode
+  );
+  const auto queueIdle = reinterpret_cast<QueueIdleFunction>(kQueueIdleAddress);
+  const UInt32 animationFlags = ReadUInt32At(idleForm, kIdleAnimFlagsOffset)
+    & kIdleAnimFlagsMask;
+  queueIdle(
+    actorAnimData,
+    idleForm,
+    actorReference,
+    animationFlags,
+    kIdleQueueMode
+  );
+  AppendLog("pickup-ground-animation-native-queued");
+  return true;
+}
+
 bool BeginAnimatedPickup(
   void* actorReference,
   UInt32 actorReferenceFormId,
@@ -559,16 +611,7 @@ bool BeginAnimatedPickup(
   UInt32 itemBaseFormId
 ) {
   if (g_pendingPickup.active) return false;
-  char script[96] = {};
-  const int written = std::snprintf(
-    script,
-    sizeof(script),
-    "PlayIdle (GetFormFromMod \"Oblivion.esm\" %08X) 1",
-    kPickupGroundIdleFormId
-  );
-  const bool animationDispatched = written > 0
-    && static_cast<std::size_t>(written) < sizeof(script)
-    && g_console->RunScriptLine2(script, actorReference, true);
+  const bool animationDispatched = DispatchPickupAnimation(actorReference);
   if (!animationDispatched) return false;
   g_pendingPickup = {
     true,
@@ -582,9 +625,8 @@ bool BeginAnimatedPickup(
     itemReferenceFormId,
     itemBaseFormId,
     "animating",
-    "pickup-ground-animation-dispatched"
+    "pickup-ground-animation-native-queued"
   );
-  AppendLog("pickup-ground-animation-dispatched");
   return true;
 }
 

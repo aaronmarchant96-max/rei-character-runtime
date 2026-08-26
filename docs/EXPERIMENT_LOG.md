@@ -861,3 +861,18 @@ idle Form ID did not satisfy `PlayIdle`'s idle-form reference parameter. The
 next candidate resolves the same version-pinned idle through xOBSE's
 `GetFormFromMod` expression before passing it to `PlayIdle`. It requires another
 live test and does not yet establish that the animation plays.
+
+The inline form-resolution candidate also failed closed with the same reason on
+the next live run. The installed DLL hash matched the candidate, ruling out a
+stale installation. The repeated result establishes that the temporary script
+compiler path cannot express this `PlayIdle` argument reliably in the measured
+xOBSE runtime; further syntax variants were stopped.
+
+The next candidate mirrors xOBSE 22.13's own `Cmd_PlayIdle_Execute` queueing
+path for the pinned Oblivion `1.2.0.416` runtime. It validates idle form
+`0003ECAA`, resolves the actor's animation data through the version-pinned Actor
+virtual table, and calls the same engine idle-queue function and arguments used
+by xOBSE. Missing form, function, or animation data fails before transfer and
+emits a distinct log reason. This native queue candidate is locally verified
+but requires live observation; a successful queue still must not be reported as
+a visible animation until the player sees it.

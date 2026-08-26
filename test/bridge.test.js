@@ -71,18 +71,19 @@ test("Oblivion pickup dispatch stages a native reach animation before transfer",
   assert.match(source, /ItemIsOffLimits/u);
   assert.match(source, /kMaximumPickupDistanceUnits/u);
   assert.match(source, /kPickupGroundIdleFormId = 0x0003ECAA/u);
-  assert.match(
-    source,
-    /PlayIdle \(GetFormFromMod \\"Oblivion\.esm\\" %08X\) 1/u
-  );
+  assert.match(source, /kActorVirtualTableAddress = 0x00A6E074/u);
+  assert.match(source, /kGetActorAnimDataVirtualOffset = 0x164/u);
+  assert.match(source, /kQueueIdleAddress = 0x00477DB0/u);
+  assert.match(source, /DispatchPickupAnimation/u);
   assert.match(source, /BeginAnimatedPickup/u);
   assert.match(source, /PollPendingPickup/u);
-  assert.match(source, /pickup-ground-animation-dispatched/u);
+  assert.match(source, /pickup-ground-animation-native-queued/u);
   assert.match(source, /pickup-completed-after-animation/u);
   assert.match(source, /DispatchPickup/u);
   assert.match(source, /"Activate %08X 1"/u);
   assert.match(source, /RunScriptLine2\(script, itemReference, true\)/u);
   assert.match(source, /action-receipt\.json/u);
+  assert.doesNotMatch(source, /PlayIdle \(GetFormFromMod/u);
   assert.doesNotMatch(source, /kActivateActionVirtualIndex/u);
   assert.doesNotMatch(source, /AddItem|RemoveItem|SetStage|ForceActorValue/u);
 });
