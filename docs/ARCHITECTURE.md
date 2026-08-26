@@ -221,11 +221,12 @@ approve or deny a one-item pickup proposal. Both outcomes retain an empty
 The native Oblivion bridge now has an experimental explicit second-target path:
 `U` links the exact NPC and `I` selects the crosshair ingredient. Before normal
 Oblivion activation is dispatched, the adapter re-resolves the NPC Form ID and
-checks actor availability/combat state, exact item type, same-cell distance,
-quest/protected flags, reference availability, and ownership/off-limits state.
-It writes an atomic action receipt. This path has compiled but has not yet been
-live-verified, so no successful pickup claim is made. Natural-language
-references such as “that apple” are still never resolved by model guesswork.
+checks exact item type, same-cell distance, quest/protected flags, reference
+availability, and ownership/off-limits state. Oblivion's normal activation
+path remains responsible for final actor-state handling. The adapter writes an
+atomic action receipt. This path has compiled but has not yet been live-verified,
+so no successful pickup claim is made. Natural-language references such as
+“that apple” are still never resolved by model guesswork.
 
 ## Evidence receipt contract
 

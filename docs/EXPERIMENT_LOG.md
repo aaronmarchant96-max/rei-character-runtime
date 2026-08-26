@@ -792,3 +792,30 @@ gate correctly withheld Nels's prepared material and used the generic creature
 path. Together, the two turns verify both live admission and live rejection for
 one observed target each. The dominant remaining delay on the admitted turn was
 voice synthesis and playback, not dialogue preparation.
+
+## EXP-022 — first native pickup candidate rejected before dispatch
+
+- Date: 2026-08-25
+- Candidate commit: `728f07a`
+- Linked actor: Nels `00028B76`
+- Selected item reference: `000A7908`
+- Selected item base: `0003369B` (player-observed sweetroll)
+- Policy result: denied
+- Receipt reason: `pickup-actor-unavailable`
+- Game action dispatched: no
+- Final verification after repair: 59 tests passed; strict 32-bit warning-free
+  build passed
+
+The live test exposed two independent defects. Loading the save replayed the
+existing 56-byte `response.txt` from the prior daughter experiment even though
+that file had not changed since 2026-08-24. The native candidate then preserved
+the exact Nels and sweetroll identities but rejected the request through its
+combined actor-state probe. Nels was visibly available; the probe was therefore
+rejected as a reliable measurement rather than treated as game truth.
+
+The repair suppresses pre-existing response content when a save loads and
+removes the unreliable native actor-state probe. Exact NPC identity, same-cell
+binding, ingredient type, reference availability, quest/protected flags,
+ownership/off-limits state, and the 500-unit distance limit remain enforced.
+Normal Oblivion activation remains responsible for final actor-state handling.
+The repair is not a successful-pickup result; another live test is required.

@@ -55,6 +55,8 @@ test("Oblivion bridge uses xOBSE-native text input instead of an OS window", asy
   assert.match(source, /RunScriptLine2\("CloseTextInput"/u);
   assert.match(source, /PollResponseFile\(\)/u);
   assert.match(source, /response-live-messagebox-ran/u);
+  assert.match(source, /response-stale-replay-suppressed/u);
+  assert.doesNotMatch(source, /DisplayResponseWhenReady|response-display-scheduled/u);
   assert.match(source, /question-target-publish-failed/u);
   assert.doesNotMatch(source, /CreateWindowExA|QuestionWindowProcedure/u);
 });

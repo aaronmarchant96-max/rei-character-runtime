@@ -36,11 +36,12 @@ is a separate measured operation.
 3. Tap `I` once.
 
 The plugin resolves the linked NPC again by Form ID and requires an NPC and
-ingredient in the same cell. It rejects dead, knocked-down, paralyzed, or
-fighting NPCs; disabled/taken, quest/protected, owned/off-limits, or distant
-ingredients; and every non-ingredient target. An accepted attempt uses the
-ingredient's normal Oblivion activation behavior with the linked NPC as the
-activator. It atomically writes the exact IDs and dispatch result to:
+ingredient in the same cell. It rejects disabled/taken, quest/protected,
+owned/off-limits, or distant ingredients and every non-ingredient target. An
+accepted attempt uses the ingredient's normal Oblivion activation behavior
+with the linked NPC as the activator; the engine remains responsible for
+whether the actor can complete that activation. It atomically writes the exact
+IDs and dispatch result to:
 
 ```text
 Data/OBSE/Plugins/EchoForge/action-receipt.json
@@ -48,3 +49,5 @@ Data/OBSE/Plugins/EchoForge/action-receipt.json
 
 This version-pinned original-Oblivion experiment has compiled but is not yet
 live-verified. The model cannot supply script text or bypass the fixed checks.
+Existing `response.txt` content is treated as stale when a save loads and is
+not replayed; only a later file change can display a dialogue response.

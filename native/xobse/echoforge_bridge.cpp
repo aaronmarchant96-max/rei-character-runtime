@@ -22,7 +22,6 @@ constexpr UInt32 kTasks2Interface = 11;
 constexpr UInt32 kMessagePostLoadGame = 8;
 constexpr UInt32 kMessageGameInitialized = 11;
 constexpr std::size_t kMaxResponseBytes = 240;
-constexpr UInt32 kDisplayDelayFrames = 120;
 constexpr std::uint16_t kF10ScanCode = 0x44;
 constexpr std::uint16_t kUScanCode = 0x16;
 constexpr std::uint16_t kYScanCode = 0x15;
@@ -53,10 +52,6 @@ constexpr float kMaximumPickupDistanceUnits = 500.0F;
 constexpr std::uintptr_t kLookupFormByIdAddress = 0x0046B250;
 constexpr std::uintptr_t kIsOffLimitsToPlayerAddress = 0x004DEBF0;
 constexpr std::size_t kActivateActionVirtualIndex = 0x32;
-constexpr std::size_t kActorIsDeadVirtualIndex = 0x7E;
-constexpr std::size_t kActorGetKnockedStateVirtualIndex = 0x67;
-constexpr std::size_t kActorIsParalyzedVirtualIndex = 0x69;
-constexpr std::size_t kActorIsInCombatVirtualIndex = 0xCD;
 
 struct BoundedGameText {
   char value[kMaxGameTextBytes + 1];
@@ -133,9 +128,7 @@ MessagingInterface* g_messaging = nullptr;
 Tasks2Interface* g_tasks = nullptr;
 InputInterface* g_input = nullptr;
 ConsoleInterface* g_console = nullptr;
-void* g_displayTask = nullptr;
 void* g_targetHotkeyTask = nullptr;
-UInt32 g_displayDelayFrames = 0;
 bool g_activationWasPressed = false;
 bool g_talkWasPressed = false;
 bool g_actionWasPressed = false;
@@ -330,26 +323,6 @@ bool BuildMessageBoxScript(const char* response, char* output, std::size_t capac
   return true;
 }
 
-bool DisplayResponseWhenReady() {
-  if (g_displayDelayFrames > 0) {
-    --g_displayDelayFrames;
-    return false;
-  }
-
-  char response[kMaxResponseBytes + 1] = {};
-  if (ReadResponse(response, sizeof(response))) {
-    char script[(kMaxResponseBytes * 2) + 32] = {};
-    if (!BuildMessageBoxScript(response, script, sizeof(script))) {
-      AppendLog("response-script-too-large");
-    } else {
-      const bool ran = g_console->RunScriptLine2(script, nullptr, true);
-      AppendLog(ran ? "response-messagebox-script-ran" : "response-messagebox-script-failed");
-    }
-  }
-  g_displayTask = nullptr;
-  return true;
-}
-
 void PollResponseFile() {
   char path[MAX_PATH] = {};
   if (!BuildPath(path, sizeof(path), "Data\\OBSE\\Plugins\\EchoForge\\response.txt")) return;
@@ -539,40 +512,6 @@ Function ReadVirtualFunction(void* object, std::size_t index) {
   if (!object) return nullptr;
   void** table = *reinterpret_cast<void***>(object);
   return table ? reinterpret_cast<Function>(table[index]) : nullptr;
-}
-
-bool ActorIsAvailable(void* actorReference) {
-  using IsDeadFunction = bool (__attribute__((fastcall)) *)(void* object);
-  using GetByteFunction = std::uint8_t (__attribute__((fastcall)) *)(void* object);
-  const auto isDead = ReadVirtualFunction<IsDeadFunction>(
-    actorReference,
-    kActorIsDeadVirtualIndex
-  );
-  const auto getKnockedState = ReadVirtualFunction<GetByteFunction>(
-    actorReference,
-    kActorGetKnockedStateVirtualIndex
-  );
-  const auto isParalyzed = ReadVirtualFunction<IsDeadFunction>(
-    actorReference,
-    kActorIsParalyzedVirtualIndex
-  );
-  return isDead && getKnockedState && isParalyzed
-    && !isDead(actorReference)
-    && getKnockedState(actorReference) == 0
-    && !isParalyzed(actorReference);
-}
-
-bool ActorIsInCombat(void* actorReference) {
-  using IsInCombatFunction = bool (__attribute__((fastcall)) *)(
-    void* object,
-    void* ignoredEdx,
-    bool unknown
-  );
-  const auto isInCombat = ReadVirtualFunction<IsInCombatFunction>(
-    actorReference,
-    kActorIsInCombatVirtualIndex
-  );
-  return !isInCombat || isInCombat(actorReference, nullptr, false);
 }
 
 bool ItemIsOffLimits(void* itemReference) {
@@ -975,24 +914,6 @@ void AttemptPickup() {
     );
     return;
   }
-  if (!ActorIsAvailable(actorReference)) {
-    RejectPickup(
-      itemReferenceFormId,
-      itemBaseFormId,
-      "pickup-actor-unavailable",
-      "The linked NPC cannot act right now."
-    );
-    return;
-  }
-  if (ActorIsInCombat(actorReference)) {
-    RejectPickup(
-      itemReferenceFormId,
-      itemBaseFormId,
-      "pickup-actor-in-combat",
-      "The linked NPC is in combat."
-    );
-    return;
-  }
   const UInt32 itemFlags = ReadUInt32At(itemReference, 0x08);
   if ((itemFlags & kReferenceDisabledFlag) != 0
       || (itemFlags & kReferenceTakenFlags) == kReferenceTakenFlags) {
@@ -1092,13 +1013,8 @@ void HandleObseMessage(MessagingInterface::Message* message) {
     AppendLog("save-load-failed");
     return;
   }
-  if (g_displayTask && g_tasks->IsTaskPresentRemovable(g_displayTask)) {
-    AppendLog("response-display-already-pending");
-    return;
-  }
-  g_displayDelayFrames = kDisplayDelayFrames;
-  g_displayTask = g_tasks->EnqueueTaskRemovable(DisplayResponseWhenReady);
-  AppendLog(g_displayTask ? "response-display-scheduled" : "response-display-schedule-failed");
+  g_responseWatchInitialized = false;
+  AppendLog("response-stale-replay-suppressed");
 }
 
 }  // namespace
