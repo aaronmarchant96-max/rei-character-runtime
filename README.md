@@ -1,5 +1,10 @@
 # REI EchoForge
 
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Status](https://img.shields.io/badge/status-pre--alpha-orange)
+![Language](https://img.shields.io/badge/language-JavaScript%2FC%2B%2B-yellow)
+![Game](https://img.shields.io/badge/game-Oblivion%2FFallout-informational)
+
 **An evidence-driven character runtime for making legacy-game worlds more
 responsive—without giving a language model unrestricted control of the game.**
 
